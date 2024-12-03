@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent} from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PlusCircle } from 'lucide-react'
 import { WALLBOX_PROVIDERS } from '@/config/wallbox-providers'
@@ -9,6 +9,7 @@ import { WallboxConnection } from '@/types/wallbox'
 import { AddWallboxDialog } from './add-wallbox-dialog'
 import { useToast } from '@/hooks/use-toast'
 import { WallboxCard } from './components/wallbox-card'
+import { useCallback } from 'react'
 
 export default function WallboxesPage() {
   const [connections, setConnections] = useState<WallboxConnection[]>([])
@@ -16,17 +17,13 @@ export default function WallboxesPage() {
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadConnections()
-  }, [])
-
-  const loadConnections = async () => {
+  const loadConnections = useCallback(async () => {
     try {
       const response = await fetch('/api/wallboxes')
       if (!response.ok) throw new Error('Laden fehlgeschlagen')
       const data = await response.json()
       setConnections(data)
-    } catch (error) {
+    } catch (_error) {
       toast({
         variant: "destructive",
         title: "Fehler",
@@ -35,7 +32,11 @@ export default function WallboxesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
+
+  useEffect(() => {
+    loadConnections()
+  }, [loadConnections])
 
   const handleAddWallbox = async (connection: WallboxConnection) => {
     try {

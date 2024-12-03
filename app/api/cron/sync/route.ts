@@ -16,10 +16,10 @@ export async function GET(request: Request) {
     await syncService.syncAllWallboxes()
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error('Cron sync error:', error)
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten'
     return NextResponse.json(
-      { error: error.message },
+      { error: errorMessage },
       { status: 500 }
     )
   }

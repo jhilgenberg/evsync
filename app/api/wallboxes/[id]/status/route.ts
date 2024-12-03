@@ -54,10 +54,10 @@ export async function GET(
       .eq('id', id)
 
     return NextResponse.json(status)
-  } catch (error: any) {
-    console.error('Status Error:', error)
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten'
     return NextResponse.json(
-      { error: error.message },
+      { error: errorMessage },
       { status: 500 }
     )
   }

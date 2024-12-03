@@ -67,9 +67,10 @@ export async function GET() {
       lastSync: wallboxes[0]?.last_sync || null,
       recentSessions: last7Days
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten'
     return NextResponse.json(
-      { error: error.message },
+      { error: errorMessage },
       { status: 500 }
     )
   }

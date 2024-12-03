@@ -14,17 +14,13 @@ export default function SettingsPage() {
   const [selectedTariff, setSelectedTariff] = useState<ElectricityTariff | undefined>()
   const { toast } = useToast()
 
-  useEffect(() => {
-    loadTariffs()
-  }, [])
-
   const loadTariffs = async () => {
     try {
       const response = await fetch('/api/tariffs')
       if (!response.ok) throw new Error('Laden fehlgeschlagen')
       const data = await response.json()
       setTariffs(data)
-    } catch (error) {
+    } catch (_error) {
       toast({
         variant: "destructive",
         title: "Fehler",
@@ -32,6 +28,10 @@ export default function SettingsPage() {
       })
     }
   }
+
+  useEffect(() => {
+    loadTariffs()
+  }, [loadTariffs])
 
   const handleSaveTariff = async (formData: TariffFormData) => {
     try {

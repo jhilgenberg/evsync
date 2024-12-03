@@ -86,7 +86,7 @@ export default function ReportsPage() {
       if (!response.ok) throw new Error('Laden fehlgeschlagen')
       const data = await response.json()
       setSessions(data)
-    } catch (error) {
+    } catch (_error) {
       toast({
         variant: "destructive",
         title: "Fehler",
@@ -99,7 +99,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     loadSessions()
-  }, [dateFrom, dateTo])
+  }, [loadSessions])
 
   const totalEnergy = sessions.reduce((sum, session) => sum + session.energy_kwh, 0)
   const totalCost = sessions.reduce((sum, session) => sum + session.cost, 0)

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { WallboxConnection } from '@/types/wallbox'
@@ -6,6 +6,7 @@ import { GoEStatus } from '@/types/go-e'
 import { Battery, Plug, Zap, RefreshCw, ThermometerSun } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WallboxDetailsDialog } from './wallbox-details-dialog'
+import Image from 'next/image'
 
 type Props = {
   connection: WallboxConnection
@@ -19,7 +20,7 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     try {
       setIsRefreshing(true)
       const response = await fetch(`/api/wallboxes/${connection.id}/status`)
@@ -32,13 +33,13 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
       setLoading(false)
       setIsRefreshing(false)
     }
-  }
+  }, [connection.id])
 
   useEffect(() => {
     fetchStatus()
-    const interval = setInterval(fetchStatus, 10000)
+    const interval = setInterval(fetchStatus, 30000)
     return () => clearInterval(interval)
-  }, [connection.id])
+  }, [fetchStatus])
 
   const getCarStatus = () => {
     if (!status) return 'Unbekannt'
@@ -66,10 +67,12 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
         <CardHeader className="space-y-1">
           <div className="flex justify-between items-start">
             <div className="flex items-center space-x-2">
-              <img 
+              <Image 
                 src={providerLogo} 
                 alt={providerName} 
-                className="h-8 w-auto"
+                width={32}
+                height={32}
+                className="w-8 h-8 object-contain"
               />
               <Button
                 variant="ghost"

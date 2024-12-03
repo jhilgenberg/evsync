@@ -14,7 +14,7 @@ export default function Auth() {
   const router = useRouter()
   const { toast } = useToast()
 
-  const handleAuth = async (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     try {

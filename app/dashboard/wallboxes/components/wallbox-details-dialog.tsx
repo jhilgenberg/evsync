@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent } from '@/components/ui/card'
 import { WallboxConnection } from '@/types/wallbox'
@@ -25,7 +25,7 @@ export function WallboxDetailsDialog({ open, onOpenChange, connection }: Props) 
   const [status, setStatus] = useState<GoEStatus | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async () => {
     try {
       const response = await fetch(`/api/wallboxes/${connection.id}/status`)
       if (!response.ok) throw new Error('Fehler beim Laden des Status')
@@ -36,7 +36,7 @@ export function WallboxDetailsDialog({ open, onOpenChange, connection }: Props) 
     } finally {
       setLoading(false)
     }
-  }
+  }, [connection.id])
 
   useEffect(() => {
     if (open) {
@@ -44,7 +44,7 @@ export function WallboxDetailsDialog({ open, onOpenChange, connection }: Props) 
       const interval = setInterval(fetchStatus, 5000)
       return () => clearInterval(interval)
     }
-  }, [open, connection.id])
+  }, [open, fetchStatus])
 
   const getCarStatus = (car?: number) => {
     switch (car) {
@@ -76,7 +76,7 @@ export function WallboxDetailsDialog({ open, onOpenChange, connection }: Props) 
   const getPhaseInfo = () => {
     if (!status?.nrg) return []
 
-    let nrgValues = [...status.nrg]
+    const nrgValues = status?.nrg?.slice(0, 16).map(value => value / 100) || []
     const phaseValue = Number(status.pha || 0)
     if (Math.floor(phaseValue / 8) === 1 && 
         parseInt(String(nrgValues[3])) > parseInt(String(nrgValues[0]))) {

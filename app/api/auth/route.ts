@@ -30,9 +30,10 @@ export async function POST(request: Request) {
       { error: 'Ungültige Aktion' },
       { status: 400 }
     )
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten'
     return NextResponse.json(
-      { error: error.message },
+      { error: errorMessage },
       { status: 500 }
     )
   }

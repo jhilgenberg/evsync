@@ -25,7 +25,7 @@ export function TariffDialog({ open, onOpenChange, onSave, currentTariff }: Prop
     valid_to: currentTariff?.valid_to ?? null,
   }))
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     try {
       await onSave(formData)

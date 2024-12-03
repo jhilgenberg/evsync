@@ -3,6 +3,17 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { createWallboxService } from '@/services/wallbox/factory'
 
+// Typ-Definition hinzufügen
+type ChargingSession = {
+  id: string
+  start_time: string
+  end_time: string
+  energy: number
+  max_power: number
+  duration_minutes: number
+  cost?: number
+}
+
 export async function POST(
   request: Request,
   context: { params: { id: string } }
@@ -62,15 +73,13 @@ export async function POST(
     const { error: insertError } = await supabase
       .from('charging_sessions')
       .upsert(
-        sessions.map((session: any) => ({
+        sessions.map((session: ChargingSession) => ({
           wallbox_id: id,
-          user_id: session.user.id,
           session_id: session.id,
           start_time: new Date(session.start_time).toISOString(),
           end_time: new Date(session.end_time).toISOString(),
           energy_kwh: session.energy / 1000, // Umrechnung von Wh in kWh
-          cost: session.cost || null,
-          raw_data: session
+          cost: session.cost || null
         })),
         { 
           onConflict: 'wallbox_id,session_id',
@@ -90,10 +99,11 @@ export async function POST(
       success: true,
       message: `${sessions.length} Ladevorgänge synchronisiert`
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten'
     console.error('Sync Error:', error)
     return NextResponse.json(
-      { error: error.message },
+      { error: errorMessage },
       { status: 500 }
     )
   }

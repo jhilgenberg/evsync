@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { WALLBOX_PROVIDERS } from '@/config/wallbox-providers'
 import { WallboxConnection, WallboxProvider } from '@/types/wallbox'
+import Image from 'next/image'
 
 type Props = {
   open: boolean
@@ -71,10 +72,12 @@ export function AddWallboxDialog({ open, onOpenChange, onAdd }: Props) {
                 className="flex items-center justify-start h-auto p-4"
                 onClick={() => handleProviderSelect(provider)}
               >
-                <img 
+                <Image 
                   src={provider.logo} 
                   alt={provider.name} 
-                  className="h-8 w-auto mr-4"
+                  width={48}
+                  height={48}
+                  className="w-12 h-12 object-contain"
                 />
                 <div className="text-left">
                   <h3 className="font-medium">{provider.name}</h3>

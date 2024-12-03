@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 import { createWallboxService } from '@/services/wallbox/factory'
 import { CostCalculator } from '@/services/cost-calculator'
 
-export async function POST(request: Request) {
+export async function POST() {
   try {
     const cookieStore = await cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
@@ -117,10 +117,10 @@ export async function POST(request: Request) {
       success: true,
       message: `${totalSessions} Ladevorgänge synchronisiert`
     })
-  } catch (error: any) {
-    console.error('Sync Error:', error)
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten'
     return NextResponse.json(
-      { error: error.message },
+      { error: errorMessage },
       { status: 500 }
     )
   }

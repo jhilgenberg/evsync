@@ -7,7 +7,6 @@ import { useToast } from '@/hooks/use-toast'
 import { 
   Battery, 
   Zap, 
-  Clock, 
   Calendar,
   TrendingUp,
   RefreshCw,
@@ -25,7 +24,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts'
-import { format, startOfDay, subDays } from 'date-fns'
+import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
 
 type DashboardData = {
@@ -95,7 +94,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     loadDashboardData()
-  }, [])
+  }, [loadDashboardData])
 
   const quickActions = [
     {
