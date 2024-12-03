@@ -4,6 +4,15 @@ import { NextResponse } from 'next/server'
 import { createWallboxService } from '@/services/wallbox/factory'
 import { CostCalculator } from '@/services/cost-calculator'
 
+interface ChargingSession {
+  id: string
+  start_time: string
+  end_time: string | null
+  energy: number
+  max_power: number
+  duration_minutes: number
+}
+
 export async function POST() {
   try {
     const cookieStore = await cookies()
@@ -61,9 +70,9 @@ export async function POST() {
         const sessions = await service.getChargingSessions(from, to)
 
         // Berechne die Kosten für jeden Ladevorgang
-        const sessionsWithCosts = sessions.map((session: any) => {
+        const sessionsWithCosts = sessions.map((session: ChargingSession) => {
           const startTime = new Date(session.start_time)
-          const endTime = new Date(session.end_time)
+          const endTime = session.end_time ? new Date(session.end_time) : new Date()
           const energyKwh = session.energy // Bereits in kWh von go-e
 
           const { cost, tariff } = costCalculator.calculateSessionCost(

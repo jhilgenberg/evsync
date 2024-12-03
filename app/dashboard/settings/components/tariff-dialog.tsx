@@ -34,11 +34,11 @@ export function TariffDialog({ open, onOpenChange, onSave, currentTariff }: Prop
         title: "Erfolg",
         description: "Stromtarif wurde gespeichert",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten',
       })
     }
   }

@@ -3,6 +3,14 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { format, subDays } from 'date-fns'
 
+type DashboardData = {
+  [key: string]: {
+    date: string
+    energy: number
+    cost: number
+  }
+}
+
 export async function GET() {
   try {
     const cookieStore = await cookies()
@@ -44,7 +52,7 @@ export async function GET() {
     if (recentError) throw recentError
 
     // Gruppiere die letzten Ladevorgänge nach Tag
-    const dailyData = recentSessions.reduce((acc: any, session) => {
+    const dailyData: DashboardData = recentSessions.reduce((acc: DashboardData, session) => {
       const date = format(new Date(session.start_time), 'yyyy-MM-dd')
       if (!acc[date]) {
         acc[date] = { date, energy: 0, cost: 0 }

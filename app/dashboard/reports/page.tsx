@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -77,7 +77,7 @@ export default function ReportsPage() {
   const [pageSize, setPageSize] = useState(20)
   const [currentPage, setCurrentPage] = useState(0)
 
-  const loadSessions = async () => {
+  const loadSessions = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(
@@ -86,7 +86,7 @@ export default function ReportsPage() {
       if (!response.ok) throw new Error('Laden fehlgeschlagen')
       const data = await response.json()
       setSessions(data)
-    } catch (_error) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Fehler",
@@ -95,7 +95,7 @@ export default function ReportsPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [dateFrom, dateTo, toast])
 
   useEffect(() => {
     loadSessions()

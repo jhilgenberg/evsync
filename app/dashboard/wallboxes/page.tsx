@@ -23,7 +23,7 @@ export default function WallboxesPage() {
       if (!response.ok) throw new Error('Laden fehlgeschlagen')
       const data = await response.json()
       setConnections(data)
-    } catch (_error) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Fehler",
@@ -59,11 +59,11 @@ export default function WallboxesPage() {
         title: "Erfolg",
         description: "Wallbox wurde erfolgreich hinzugefügt",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten',
       })
     }
   }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
@@ -45,14 +45,14 @@ export default function Dashboard() {
   const [isSyncing, setIsSyncing] = useState(false)
   const { toast } = useToast()
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch('/api/dashboard')
       if (!response.ok) throw new Error('Laden fehlgeschlagen')
       const dashboardData = await response.json()
       setData(dashboardData)
-    } catch (error) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Fehler",
@@ -61,7 +61,7 @@ export default function Dashboard() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [toast])
 
   const handleSync = async () => {
     try {
@@ -81,11 +81,11 @@ export default function Dashboard() {
       })
 
       await loadDashboardData()
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten',
       })
     } finally {
       setIsSyncing(false)

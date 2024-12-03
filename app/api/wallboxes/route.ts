@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     try {
       const service = createWallboxService(connection)
       await service.getStatus()
-    } catch (error: any) {
+    } catch (_error: unknown) {
       return NextResponse.json(
         { error: 'Verbindung konnte nicht hergestellt werden' },
         { status: 400 }
@@ -42,15 +42,15 @@ export async function POST(request: Request) {
     if (error) throw error
 
     return NextResponse.json(data)
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message },
+      { error: error instanceof Error ? error.message : 'Unbekannter Fehler' },
       { status: 500 }
     )
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(_request: Request) {
   try {
     const cookieStore = cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
@@ -71,9 +71,9 @@ export async function GET(request: Request) {
     if (error) throw error
 
     return NextResponse.json(data)
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json(
-      { error: error.message },
+      { error: error instanceof Error ? error.message : 'Unbekannter Fehler' },
       { status: 500 }
     )
   }

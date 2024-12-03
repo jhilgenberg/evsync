@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { PlusCircle, Pencil } from 'lucide-react'
@@ -14,20 +14,20 @@ export default function SettingsPage() {
   const [selectedTariff, setSelectedTariff] = useState<ElectricityTariff | undefined>()
   const { toast } = useToast()
 
-  const loadTariffs = async () => {
+  const loadTariffs = useCallback(async () => {
     try {
       const response = await fetch('/api/tariffs')
       if (!response.ok) throw new Error('Laden fehlgeschlagen')
       const data = await response.json()
       setTariffs(data)
-    } catch (_error) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Fehler",
         description: "Tarife konnten nicht geladen werden",
       })
     }
-  }
+  }, [toast])
 
   useEffect(() => {
     loadTariffs()
@@ -53,7 +53,7 @@ export default function SettingsPage() {
 
       await loadTariffs()
       setSelectedTariff(undefined)
-    } catch (error: any) {
+    } catch (error: unknown) {
       throw error
     }
   }
