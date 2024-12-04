@@ -19,22 +19,16 @@ export class CostCalculator {
 
   calculateSessionCost(
     startTime: Date,
-    endTime: Date,
     energyKwh: number
   ): { cost: number; tariff: ElectricityTariff | null } {
     const tariff = this.findApplicableTariff(startTime)
     if (!tariff) return { cost: 0, tariff: null }
 
-    // Berechne die anteilige Grundgebühr
-    const durationHours = (endTime.getTime() - startTime.getTime()) / (1000 * 60 * 60)
-    const baseRateHourly = tariff.base_rate_monthly / (30 * 24) // Vereinfachte Berechnung
-    const baseRateCost = baseRateHourly * durationHours
-
-    // Berechne die Energiekosten (Umrechnung von ct/kWh in €/kWh)
-    const energyCost = (tariff.energy_rate / 100) * energyKwh
+    // Berechne nur die Energiekosten (Umrechnung von ct/kWh in €/kWh)
+    const cost = (tariff.energy_rate / 100) * energyKwh
 
     return {
-      cost: baseRateCost + energyCost,
+      cost,
       tariff
     }
   }

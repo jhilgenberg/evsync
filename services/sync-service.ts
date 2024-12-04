@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { createWallboxService } from './wallbox/factory'
 import { CostCalculator } from './cost-calculator'
-import { ElectricityTariff } from '@/types/tariff'
 
 export class SyncService {
   private supabase = createClient(
@@ -60,7 +59,6 @@ export class SyncService {
 
         const { cost, tariff } = costCalculator.calculateSessionCost(
           startTime,
-          endTime,
           energyKwh
         )
 
@@ -71,11 +69,10 @@ export class SyncService {
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
           energy_kwh: energyKwh,
-          cost: cost,
+          cost: Number(cost.toFixed(2)),
           tariff_id: tariff?.id || null,
           tariff_name: tariff?.name || null,
           energy_rate: tariff?.energy_rate || null,
-          base_rate: tariff?.base_rate_monthly || null,
           raw_data: session
         }
       })

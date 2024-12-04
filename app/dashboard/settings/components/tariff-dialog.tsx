@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,12 +18,24 @@ type Props = {
 export function TariffDialog({ open, onOpenChange, onSave, currentTariff }: Props) {
   const { toast } = useToast()
   const [formData, setFormData] = useState<TariffFormData>(() => ({
-    name: currentTariff?.name ?? '',
-    base_rate_monthly: currentTariff?.base_rate_monthly ?? 0,
-    energy_rate: currentTariff?.energy_rate ?? 0,
-    valid_from: currentTariff?.valid_from ?? new Date().toISOString().split('T')[0],
-    valid_to: currentTariff?.valid_to ?? null,
+    name: '',
+    base_rate_monthly: 0,
+    energy_rate: 0,
+    valid_from: new Date().toISOString().split('T')[0],
+    valid_to: null,
   }))
+
+  useEffect(() => {
+    if (currentTariff) {
+      setFormData({
+        name: currentTariff.name,
+        base_rate_monthly: currentTariff.base_rate_monthly,
+        energy_rate: currentTariff.energy_rate,
+        valid_from: currentTariff.valid_from.split('T')[0],
+        valid_to: currentTariff.valid_to ? currentTariff.valid_to.split('T')[0] : null,
+      })
+    }
+  }, [currentTariff])
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()

@@ -61,13 +61,13 @@ export async function POST() {
           .single()
 
         // Setze den Zeitraum für die Abfrage
-        const to = new Date()
-        const from = lastSession?.end_time 
-          ? new Date(lastSession.end_time)
-          : new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000) // 30 Tage zurück
+        //const to = new Date()
+        //const from = lastSession?.end_time 
+          //? new Date(lastSession.end_time)
+          //: new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000) // 30 Tage zurück
 
         // Hole die Ladevorgänge
-        const sessions = await service.getChargingSessions(from, to)
+        const sessions = await service.getChargingSessions()
 
         // Berechne die Kosten für jeden Ladevorgang
         const sessionsWithCosts = sessions.map((session: ChargingSession) => {
@@ -77,22 +77,20 @@ export async function POST() {
 
           const { cost, tariff } = costCalculator.calculateSessionCost(
             startTime,
-            endTime,
             energyKwh
           )
 
           return {
             wallbox_id: connection.id,
-            user_id: connection.user_id, // Verwende die user_id von der connection
+            user_id: connection.user_id,
             session_id: session.id,
             start_time: startTime.toISOString(),
             end_time: endTime.toISOString(),
             energy_kwh: energyKwh,
-            cost: cost,
+            cost: Number(cost.toFixed(2)),
             tariff_id: tariff?.id || null,
             tariff_name: tariff?.name || null,
             energy_rate: tariff?.energy_rate || null,
-            base_rate: tariff?.base_rate_monthly || null,
             raw_data: session
           }
         })

@@ -16,7 +16,9 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Download,
-  FileText
+  FileText,
+  TrendingUp,
+  TrendingDown
 } from 'lucide-react'
 import {
   Table,
@@ -43,12 +45,13 @@ import {
   BarChart,
   Bar,
 } from 'recharts'
-import { format, differenceInMinutes, startOfDay, parseISO } from 'date-fns'
+import { format, differenceInMinutes, startOfDay, parseISO, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { formatInTimeZone } from 'date-fns-tz'
 import { cn } from '@/lib/utils'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
+import { ScheduleReportDialog } from './components/schedule-report-dialog'
+import { Switch } from '@/components/ui/switch'
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface DidDrawPageData {
   pageNumber: number;
@@ -73,7 +76,7 @@ type DailyData = {
   sessions: number;
 };
 
-const PAGE_SIZES = [10, 20, 50, 100]
+const PAGE_SIZES = [5, 10, 20, 50, 100]
 
 export default function ReportsPage() {
   const [sessions, setSessions] = useState<ChargingSession[]>([])
@@ -86,14 +89,24 @@ export default function ReportsPage() {
   const [dateTo, setDateTo] = useState(() => format(new Date(), 'yyyy-MM-dd'))
   const { toast } = useToast()
   const [isSyncing, setIsSyncing] = useState(false)
-  const [pageSize, setPageSize] = useState(20)
+  const [pageSize, setPageSize] = useState(5)
   const [currentPage, setCurrentPage] = useState(0)
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'))
+  const [isCustomRange, setIsCustomRange] = useState(false)
 
   const loadSessions = useCallback(async () => {
     try {
       setLoading(true)
+      // Berechne den vorherigen Zeitraum
+      const currentStart = new Date(dateFrom)
+      const currentEnd = new Date(dateTo)
+      const duration = currentEnd.getTime() - currentStart.getTime()
+      const previousStart = new Date(currentStart.getTime() - duration)
+      
+      // Lade Daten für beide Zeiträume
       const response = await fetch(
-        `/api/charging-sessions?from=${dateFrom}&to=${dateTo}`
+        `/api/charging-sessions?from=${format(previousStart, 'yyyy-MM-dd')}&to=${dateTo}`
       )
       if (!response.ok) throw new Error('Laden fehlgeschlagen')
       const data = await response.json()
@@ -117,6 +130,33 @@ export default function ReportsPage() {
   const totalEnergy = sessions.reduce((sum, session) => sum + session.energy_kwh, 0)
   const totalCost = sessions.reduce((sum, session) => sum + session.cost, 0)
 
+  // Prüfe und starte Sync wenn nötig
+  useEffect(() => {
+    const checkAndSync = async () => {
+      try {
+        // Hole den letzten Sync-Zeitpunkt aller Wallboxen
+        const response = await fetch('/api/wallboxes')
+        if (!response.ok) throw new Error('Laden der Wallboxen fehlgeschlagen')
+        const wallboxes = await response.json()
+
+        // Prüfe ob ein Sync nötig ist
+        const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000)
+        const needsSync = wallboxes.some((wallbox: any) => {
+          const lastSync = wallbox.last_sync ? new Date(wallbox.last_sync) : new Date(0)
+          return lastSync < fifteenMinutesAgo
+        })
+
+        if (needsSync && !isSyncing) {
+          await handleSync()
+        }
+      } catch (error) {
+        console.error('Auto-Sync Check fehlgeschlagen:', error)
+      }
+    }
+
+    checkAndSync()
+  }, []) // Nur beim ersten Laden der Seite
+
   const handleSync = async () => {
     try {
       setIsSyncing(true)
@@ -134,7 +174,6 @@ export default function ReportsPage() {
         description: "Ladevorgänge wurden synchronisiert",
       })
 
-      // Lade die aktualisierten Daten
       await loadSessions()
     } catch (error: unknown) {
       toast({
@@ -148,33 +187,44 @@ export default function ReportsPage() {
     }
   }
 
-  // Gruppiere die Daten nach Tagen für die Diagramme
-  const dailyData = sessions.reduce<DailyData[]>((acc, session) => {
-    const date = startOfDay(new Date(session.start_time));
-    const dateStr = format(date, 'yyyy-MM-dd');
-    
-    const existingDay = acc.find(d => d.date === dateStr);
-    if (existingDay) {
-      existingDay.energy += session.energy_kwh;
-      existingDay.cost += session.cost;
-      existingDay.sessions += 1;
-    } else {
-      acc.push({
-        date: dateStr,
-        energy: session.energy_kwh,
-        cost: session.cost,
-        sessions: 1,
-      });
-    }
-    return acc;
-  }, []).sort((a, b) => a.date.localeCompare(b.date));
-
   // Sortiere und filtere die Sessions
   const sortedSessions = useMemo(() => {
-    return [...sessions].sort((a, b) => 
+    // Filtere zuerst nach dem ausgewählten Zeitraum
+    const filteredSessions = sessions.filter(session => {
+      const sessionDate = new Date(session.start_time)
+      const start = new Date(dateFrom)
+      const end = new Date(dateTo)
+      return sessionDate >= start && sessionDate <= end
+    })
+
+    // Dann sortiere die gefilterten Sessions
+    return [...filteredSessions].sort((a, b) => 
       new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
     )
-  }, [sessions])
+  }, [sessions, dateFrom, dateTo])
+
+  // Gruppiere die Daten nach Tagen für die Diagramme
+  const dailyData = useMemo(() => {
+    return sortedSessions.reduce<DailyData[]>((acc, session) => {
+      const date = startOfDay(new Date(session.start_time));
+      const dateStr = format(date, 'yyyy-MM-dd');
+      
+      const existingDay = acc.find(d => d.date === dateStr);
+      if (existingDay) {
+        existingDay.energy += session.energy_kwh;
+        existingDay.cost += session.cost;
+        existingDay.sessions += 1;
+      } else {
+        acc.push({
+          date: dateStr,
+          energy: session.energy_kwh,
+          cost: session.cost,
+          sessions: 1,
+        });
+      }
+      return acc;
+    }, []).sort((a, b) => a.date.localeCompare(b.date));
+  }, [sortedSessions])
 
   // Berechne die Gesamtanzahl der Seiten
   const totalPages = Math.ceil(sortedSessions.length / pageSize)
@@ -196,144 +246,123 @@ export default function ReportsPage() {
     setCurrentPage(0)
   }, [dateFrom, dateTo])
 
-  const generatePDF = () => {
-    const doc = new jsPDF()
-    
-    // Styling-Konstanten
-    const primaryColor = [0, 113, 227]
-    const textColor = [51, 51, 51]
-    const secondaryColor = [128, 128, 128]
-    
-    // Header
-    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.rect(0, 0, doc.internal.pageSize.width, 40, 'F')
-    
-    // Logo & Titel
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(24)
-    doc.text('EVSync', 14, 25)
-    doc.setFontSize(12)
-    doc.text('Ladebericht', 14, 35)
-    
-    // Zeitraum
-    doc.setTextColor(textColor[0], textColor[1], textColor[2])
-    doc.setFontSize(12)
-    doc.text('Zeitraum:', 14, 55)
-    const [r, g, b] = secondaryColor
-    doc.setTextColor(r, g, b)
-    doc.text(
-      `${format(parseISO(dateFrom), 'PPP', { locale: de })} bis ${format(parseISO(dateTo), 'PPP', { locale: de })}`,
-      45, 55
-    )
-    
-    // Zusammenfassung Box
-    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.setLineWidth(0.1)
-    doc.roundedRect(14, 65, 182, 40, 3, 3)
-    
-    // Zusammenfassung Titel
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.setFontSize(14)
-    doc.text('Zusammenfassung', 20, 75)
-    
-    // Zusammenfassung Details
-    doc.setFontSize(10)
-    doc.setTextColor(textColor[0], textColor[1], textColor[2])
-    const summaryData = [
-      ['Gesamtenergie:', `${totalEnergy.toFixed(2)} kWh`],
-      ['Gesamtkosten:', `${totalCost.toFixed(2)} €`],
-      ['Anzahl Ladevorgänge:', `${sessions.length}`]
-    ]
-    
-    let y = 85
-    summaryData.forEach(([label, value]) => {
-      doc.setTextColor(r, g, b)
-      doc.text(label, 20, y)
-      doc.setTextColor(textColor[0], textColor[1], textColor[2])
-      doc.text(value, 80, y)
-      y += 8
-    })
-    
-    // Ladevorgänge Tabelle
-    doc.setFontSize(14)
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.text('Ladevorgänge', 14, 120)
-    
-    // Tabellen-Styling mit angepassten Optionen
-    const tableStyles = {
-      headStyles: {
-        fillColor: [0, 113, 227] as [number, number, number],
-        textColor: [255, 255, 255] as [number, number, number],
-        fontSize: 10,
-        fontStyle: 'bold' as const,
-      },
-      bodyStyles: {
-        textColor: [51, 51, 51] as [number, number, number],
-        fontSize: 9,
-      },
-      alternateRowStyles: {
-        fillColor: [249, 250, 251] as [number, number, number],
-      },
-      columnStyles: {
-        0: { cellWidth: 40 },  // Datum
-        1: { cellWidth: 25 },  // Dauer
-        2: { cellWidth: 30 },  // Energie
-        3: { cellWidth: 55 },  // Tarif
-        4: { cellWidth: 30, halign: 'right' as const },  // Kosten
-      },
-      margin: { top: 130 },
-      startY: 130, // Fester Startpunkt für die erste Seite
-      didDrawPage: function(data: DidDrawPageData) {
-        // Setze den Header auf jeder neuen Seite
-        if (data.pageNumber > 1) {
-          doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-          doc.rect(0, 0, doc.internal.pageSize.width, 40, 'F')
-          
-          doc.setTextColor(255, 255, 255)
-          doc.setFontSize(24)
-          doc.text('EVSync', 14, 25)
-          doc.setFontSize(12)
-          doc.text('Ladebericht', 14, 35)
-        }
-        
-        // Footer auf jeder Seite
-        doc.setFontSize(8)
-        doc.setTextColor(r, g, b)
-        doc.text(
-          `Erstellt am ${format(new Date(), 'PPp', { locale: de })} - Seite ${data.pageNumber} von ${data.pageCount}`,
-          doc.internal.pageSize.width / 2,
-          doc.internal.pageSize.height - 10,
-          { align: 'center' }
-        )
-      },
-      showHead: 'everyPage' as const,
-      tableLineColor: [230, 230, 230] as [number, number, number],
-      tableLineWidth: 0.1,
-    }
-    
-    // Tabellendaten
-    autoTable(doc, {
-      head: [['Datum', 'Dauer', 'Energie', 'Tarif', 'Kosten']],
-      body: sessions.map(session => {
-        const startDate = parseISO(session.start_time)
-        const endDate = parseISO(session.end_time)
-        const duration = differenceInMinutes(endDate, startDate)
-        const hours = Math.floor(duration / 60)
-        const minutes = duration % 60
+  const generatePDF = async () => {
+    try {
+      const response = await fetch('/api/reports/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startDate: dateFrom,
+          endDate: dateTo
+        })
+      })
 
-        return [
-          format(startDate, 'Pp', { locale: de }),
-          `${hours > 0 ? `${hours}h ` : ''}${minutes}min`,
-          `${session.energy_kwh.toFixed(2)} kWh`,
-          `${session.tariff_name}\n(${session.energy_rate.toFixed(2)} ct/kWh)`,
-          `${session.cost.toFixed(2)} €`
-        ]
-      }),
-      ...tableStyles,
+      if (!response.ok) {
+        throw new Error('PDF Generierung fehlgeschlagen')
+      }
+
+      const { pdf } = await response.json()
+
+      // Erstelle einen temporären Link zum Herunterladen
+      const link = document.createElement('a')
+      link.href = pdf
+      link.download = `EVSync_Ladebericht_${dateFrom}_${dateTo}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "PDF konnte nicht generiert werden",
+      })
+      console.error(error)
+    }
+  }
+
+  // Aktualisiere dateFrom und dateTo wenn sich der Monat ändert
+  useEffect(() => {
+    const date = new Date(selectedMonth)
+    setDateFrom(format(startOfMonth(date), 'yyyy-MM-dd'))
+    setDateTo(format(endOfMonth(date), 'yyyy-MM-dd'))
+  }, [selectedMonth])
+
+  // Berechne Statistiken für den aktuellen und vorherigen Zeitraum
+  const statistics = useMemo(() => {
+    const currentStart = new Date(dateFrom)
+    const currentEnd = new Date(dateTo)
+    const duration = currentEnd.getTime() - currentStart.getTime()
+    
+    // Berechne den vorherigen Zeitraum
+    const previousStart = new Date(currentStart.getTime() - duration)
+    const previousEnd = new Date(currentStart)
+    
+    // Filtere Sessions für beide Zeiträume
+    const currentSessions = sessions.filter(session => {
+      const date = new Date(session.start_time)
+      return date >= currentStart && date <= currentEnd
     })
     
-    // Speichern
-    doc.save(`EVSync_Ladebericht_${dateFrom}_${dateTo}.pdf`)
+    const previousSessions = sessions.filter(session => {
+      const date = new Date(session.start_time)
+      return date >= previousStart && date < previousEnd
+    })
+
+    // Berechne Summen
+    const current = {
+      energy: currentSessions.reduce((sum, s) => sum + s.energy_kwh, 0),
+      cost: currentSessions.reduce((sum, s) => sum + s.cost, 0),
+      count: currentSessions.length
+    }
+
+    const previous = {
+      energy: previousSessions.reduce((sum, s) => sum + s.energy_kwh, 0),
+      cost: previousSessions.reduce((sum, s) => sum + s.cost, 0),
+      count: previousSessions.length
+    }
+
+    // Berechne Änderungen in Prozent
+    const calculateChange = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0
+      return ((current - previous) / previous) * 100
+    }
+
+    return {
+      energy: {
+        value: current.energy,
+        change: calculateChange(current.energy, previous.energy)
+      },
+      cost: {
+        value: current.cost,
+        change: calculateChange(current.cost, previous.cost)
+      },
+      sessions: {
+        value: current.count,
+        change: calculateChange(current.count, previous.count)
+      }
+    }
+  }, [sessions, dateFrom, dateTo])
+
+  // Komponente für den Trend-Indikator
+  const TrendIndicator = ({ change }: { change: number }) => {
+    if (change === 0) return null
+    const isPositive = change > 0
+    return (
+      <div className={cn(
+        "flex items-center text-sm",
+        isPositive ? "text-green-500" : "text-red-500"
+      )}>
+        {isPositive ? (
+          <TrendingUp className="h-4 w-4 mr-1" />
+        ) : (
+          <TrendingDown className="h-4 w-4 mr-1" />
+        )}
+        {Math.abs(change).toFixed(1)}%
+      </div>
+    )
   }
 
   return (
@@ -341,6 +370,13 @@ export default function ReportsPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-medium">Ladeberichte</h1>
         <div className="flex gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => setScheduleDialogOpen(true)}
+          >
+            <Calendar className="mr-2 h-4 w-4" />
+            Automatisieren
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
@@ -373,28 +409,87 @@ export default function ReportsPage() {
       {/* Filter-Bereich */}
       <Card>
         <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="grid w-full max-w-sm items-center gap-1.5">
-              <Label htmlFor="from">Von</Label>
-              <Input
-                type="date"
-                id="from"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="h-9"
-              />
+          <Tabs defaultValue="month" onValueChange={(value) => setIsCustomRange(value === 'custom')}>
+            <div className="flex flex-col space-y-4">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="month">Monatsauswahl</TabsTrigger>
+                <TabsTrigger value="custom">Benutzerdefiniert</TabsTrigger>
+              </TabsList>
+
+              <div className="space-y-4">
+                {isCustomRange ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="from">Von</Label>
+                      <Input
+                        type="date"
+                        id="from"
+                        value={dateFrom}
+                        onChange={(e) => setDateFrom(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="to">Bis</Label>
+                      <Input
+                        type="date"
+                        id="to"
+                        value={dateTo}
+                        onChange={(e) => setDateTo(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="month">Monat auswählen</Label>
+                        <Input
+                          type="month"
+                          id="month"
+                          value={selectedMonth}
+                          onChange={(e) => setSelectedMonth(e.target.value)}
+                          className="h-9"
+                        />
+                      </div>
+                      <div className="flex items-end space-x-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => {
+                            const date = new Date(selectedMonth)
+                            setSelectedMonth(format(subMonths(date, 1), 'yyyy-MM'))
+                          }}
+                        >
+                          <ChevronLeft className="h-4 w-4 mr-2" />
+                          Vorheriger
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="flex-1"
+                          onClick={() => {
+                            const today = new Date()
+                            setSelectedMonth(format(today, 'yyyy-MM'))
+                          }}
+                        >
+                          Aktuell
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                  <Calendar className="h-4 w-4 mr-2" />
+                  <span>
+                    Zeitraum: {format(parseISO(dateFrom), 'PPP', { locale: de })} bis{' '}
+                    {format(parseISO(dateTo), 'PPP', { locale: de })}
+                  </span>
+                </div>
+              </div>
             </div>
-            <div className="grid w-full max-w-sm items-center gap-1.5">
-              <Label htmlFor="to">Bis</Label>
-              <Input
-                type="date"
-                id="to"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="h-9"
-              />
-            </div>
-          </div>
+          </Tabs>
         </CardContent>
       </Card>
 
@@ -408,7 +503,10 @@ export default function ReportsPage() {
             <Zap className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalEnergy.toFixed(2)} kWh</div>
+            <div className="text-2xl font-bold">
+              {statistics.energy.value.toFixed(2)} kWh
+            </div>
+            <TrendIndicator change={statistics.energy.change} />
           </CardContent>
         </Card>
 
@@ -420,7 +518,10 @@ export default function ReportsPage() {
             <Battery className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalCost.toFixed(2)} €</div>
+            <div className="text-2xl font-bold">
+              {statistics.cost.value.toFixed(2)} €
+            </div>
+            <TrendIndicator change={statistics.cost.change} />
           </CardContent>
         </Card>
 
@@ -432,7 +533,8 @@ export default function ReportsPage() {
             <Calendar className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{sessions.length}</div>
+            <div className="text-2xl font-bold">{statistics.sessions.value}</div>
+            <TrendIndicator change={statistics.sessions.change} />
           </CardContent>
         </Card>
       </div>
@@ -628,6 +730,11 @@ export default function ReportsPage() {
           )}
         </CardContent>
       </Card>
+
+      <ScheduleReportDialog 
+        open={scheduleDialogOpen} 
+        onOpenChange={setScheduleDialogOpen}
+      />
     </div>
   )
 } 
