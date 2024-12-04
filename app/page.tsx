@@ -300,7 +300,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA Section - mobile angepasst */}
+      {/* CTA Section */}
       <section className="py-16 sm:py-20 px-4 bg-gradient-to-r from-blue-600 to-violet-500 text-white">
         <div className="mx-auto max-w-7xl text-center">
           <h2 className="text-2xl sm:text-3xl font-bold mb-4">
@@ -317,20 +317,6 @@ export default function LandingPage() {
           </Link>
         </div>
       </section>
-
-      {/* Footer - mobile optimiert */}
-      <footer className="py-8 sm:py-12 border-t">
-        <div className="mx-auto max-w-7xl px-4 text-center">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-muted-foreground">
-            <p>© {new Date().getFullYear()} EVSync. Alle Rechte vorbehalten.</p>
-            <div className="flex items-center gap-4">
-              <Link href="/impressum" className="hover:text-foreground transition-colors">
-                Impressum
-              </Link>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }
