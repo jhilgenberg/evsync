@@ -12,7 +12,8 @@ import {
   Wallet,
   Smartphone,
   Check,
-  Plus
+  Plus,
+  Coffee
 } from 'lucide-react'
 import Image from 'next/image'
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -21,15 +22,14 @@ import { Input } from "@/components/ui/input"
 import { CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
+import { WALLBOX_PROVIDERS } from '@/config/wallbox-providers'
+import { Separator } from "@/components/ui/separator"
 
-const supportedWallboxes = [
-  {
-    name: "go-e",
-    logo: "/logos/go-e.png",
-    description: "go-e HOME+ und CHARGER"
-  },
-  // Weitere Wallboxen hier hinzufügen
-]
+const supportedWallboxes = WALLBOX_PROVIDERS.map(provider => ({
+  name: provider.name,
+  logo: provider.logo,
+  description: provider.description
+}))
 
 const features = [
   {
@@ -118,69 +118,72 @@ export default function LandingPage() {
 
   return (
     <div className="flex min-h-screen flex-col">
-      {/* Hero Section */}
-      <header className="flex flex-col items-center justify-center px-4 py-24 text-center bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-background">
-        <h1 className="text-4xl sm:text-6xl font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-violet-500 bg-clip-text text-transparent">
+      {/* Hero Section - optimierte Abstände */}
+      <header className="flex flex-col items-center justify-center px-4 py-16 sm:py-24 text-center bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-background">
+        <h1 className="text-3xl sm:text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-violet-500 bg-clip-text text-transparent">
           EVSync
         </h1>
-        <p className="mt-4 text-xl text-muted-foreground max-w-2xl">
+        <p className="mt-4 text-lg sm:text-xl text-muted-foreground max-w-2xl px-4">
           Die zentrale Plattform für die Verwaltung Ihrer Wallboxen. 
           Überwachen, analysieren und optimieren Sie Ihr Ladeverhalten.
         </p>
-        <div className="mt-8 flex gap-4">
-          <Link href="/dashboard">
-            <Button size="lg" className="bg-gradient-to-r from-blue-600 to-blue-500">
+        <div className="mt-8 flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-none">
+          <Link href="/auth" className="w-full sm:w-auto">
+            <Button size="lg" className="w-full bg-gradient-to-r from-blue-600 to-blue-500">
               Jetzt starten
             </Button>
           </Link>
-          <Link href="/dashboard/wallboxes">
-            <Button size="lg" variant="outline">
+          <Link href="/auth" className="w-full sm:w-auto">
+            <Button size="lg" variant="outline" className="w-full">
               Demo ansehen
             </Button>
           </Link>
         </div>
       </header>
 
-      {/* Features Grid */}
-      <section className="py-20 px-4">
+      {/* Features Grid - angepasstes Layout */}
+      <section className="py-16 sm:py-20 px-4">
         <div className="mx-auto max-w-7xl">
-          <h2 className="text-3xl font-bold text-center mb-12">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-8 sm:mb-12">
             Alles was Sie brauchen
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
             {features.map((feature) => (
-              <Card key={feature.title} className="p-6 hover:shadow-lg transition-shadow">
-                <feature.icon className="h-12 w-12 text-blue-500 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-                <p className="text-muted-foreground">{feature.description}</p>
+              <Card key={feature.title} className="p-4 sm:p-6 hover:shadow-lg transition-shadow">
+                <feature.icon className="h-10 w-10 sm:h-12 sm:w-12 text-blue-500 mb-4" />
+                <h3 className="text-base sm:text-lg font-semibold mb-2">{feature.title}</h3>
+                <p className="text-sm sm:text-base text-muted-foreground">{feature.description}</p>
               </Card>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Neue Sektion: Unterstützte Wallboxen */}
-      <section className="py-20 px-4 bg-muted/50">
+      {/* Unterstützte Wallboxen - verbesserte mobile Darstellung */}
+      <section className="py-16 sm:py-20 px-4 bg-muted/50">
         <div className="mx-auto max-w-7xl">
-          <h2 className="text-3xl font-bold text-center mb-4">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center mb-4">
             Unterstützte Wallboxen
           </h2>
-          <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+          <p className="text-center text-sm sm:text-base text-muted-foreground mb-8 sm:mb-12 max-w-2xl mx-auto px-4">
             EVSync unterstützt bereits verschiedene Wallbox-Modelle und wird ständig erweitert.
             Vermissen Sie einen Anbieter? Lassen Sie es uns wissen!
           </p>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-8 mb-8 sm:mb-12">
             {supportedWallboxes.map((wallbox) => (
-              <Card key={wallbox.name} className="flex flex-col items-center p-6">
-                <Image
-                  src={wallbox.logo}
-                  alt={wallbox.name}
-                  width={120}
-                  height={120}
-                  className="mb-4"
-                />
-                <h3 className="font-semibold mb-2">{wallbox.name}</h3>
+              <Card key={wallbox.name} className="flex flex-col items-center p-4 sm:p-6 hover:shadow-lg transition-shadow">
+                <div className="h-16 w-16 sm:h-20 sm:w-20 lg:h-24 lg:w-24 relative mb-4 flex items-center justify-center">
+                  <Image
+                    src={wallbox.logo}
+                    alt={wallbox.name}
+                    width={96}
+                    height={96}
+                    className="object-contain"
+                    priority
+                  />
+                </div>
+                <h3 className="text-base sm:text-lg font-semibold mb-2">{wallbox.name}</h3>
                 <p className="text-sm text-muted-foreground text-center">
                   {wallbox.description}
                 </p>
@@ -188,12 +191,12 @@ export default function LandingPage() {
             ))}
           </div>
 
-          <div className="text-center">
+          <div className="text-center px-4">
             <Dialog open={showDialog} onOpenChange={setShowDialog}>
               <DialogTrigger asChild>
-                <Button variant="outline">
+                <Button variant="outline" className="w-full sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" />
-                  Wallbox-Anbieter vorschlagen
+                  <span className="whitespace-nowrap">Wallbox-Anbieter vorschlagen</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -243,12 +246,12 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Neue Sektion: Arbeitgeber-Abrechnung */}
-      <section className="py-20 px-4">
+      {/* Arbeitgeber-Abrechnung - mobile Optimierung */}
+      <section className="py-16 sm:py-20 px-4">
         <div className="mx-auto max-w-7xl">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
+          <div className="grid md:grid-cols-2 gap-8 sm:gap-12 items-center">
             <div>
-              <h2 className="text-3xl font-bold mb-6">
+              <h2 className="text-2xl sm:text-3xl font-bold mb-6">
                 Einfache Abrechnung mit dem Arbeitgeber
               </h2>
               <div className="space-y-4">
@@ -281,11 +284,11 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
-            <div className="relative">
+            <div className="relative mt-8 md:mt-0">
               <div className="absolute -inset-4 bg-gradient-to-r from-blue-500 to-violet-500 rounded-lg opacity-20 blur-lg" />
               <Card className="relative">
                 <CardHeader>
-                  <CardTitle>Beispiel-Abrechnung</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl">Beispiel-Abrechnung</CardTitle>
                   <CardDescription>Monatliche Abrechnung für den Arbeitgeber</CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -303,27 +306,27 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 px-4 bg-gradient-to-r from-blue-600 to-violet-500 text-white">
+      {/* CTA Section - mobile angepasst */}
+      <section className="py-16 sm:py-20 px-4 bg-gradient-to-r from-blue-600 to-violet-500 text-white">
         <div className="mx-auto max-w-7xl text-center">
-          <h2 className="text-3xl font-bold mb-4">
+          <h2 className="text-2xl sm:text-3xl font-bold mb-4">
             Bereit Ihre Wallboxen zu verwalten?
           </h2>
-          <p className="mb-8 text-lg opacity-90 max-w-2xl mx-auto">
+          <p className="mb-8 text-base sm:text-lg opacity-90 max-w-2xl mx-auto px-4">
             Starten Sie noch heute und behalten Sie den Überblick über Ihren Ladeverbrauch.
             Kostenlos und ohne Verpflichtungen.
           </p>
-          <Link href="/dashboard">
-            <Button size="lg" variant="secondary">
+          <Link href="/auth" className="block w-full sm:w-auto sm:inline-block px-4">
+            <Button size="lg" variant="secondary" className="w-full sm:w-auto">
               Kostenlos starten
             </Button>
           </Link>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-12 border-t">
-        <div className="mx-auto max-w-7xl px-4 text-center text-muted-foreground">
+      {/* Footer - mobile optimiert */}
+      <footer className="py-8 sm:py-12 border-t">
+        <div className="mx-auto max-w-7xl px-4 text-center text-sm sm:text-base text-muted-foreground">
           <p>© {new Date().getFullYear()} EVSync. Alle Rechte vorbehalten.</p>
         </div>
       </footer>

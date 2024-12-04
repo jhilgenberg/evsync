@@ -3,24 +3,52 @@ import { WallboxProvider } from '@/types/wallbox'
 export const WALLBOX_PROVIDERS: WallboxProvider[] = [
   {
     id: 'go-e',
-    name: 'go-e Charger',
+    name: 'go-e',
     logo: '/logos/go-e.png',
-    description: 'Verbinde dich mit deinem go-e Charger über die Cloud API V3.',
+    description: 'go-e HOME+ und CHARGER',
     fields: [
       {
-        id: 'charger_id',
-        label: 'Seriennummer',
-        type: 'text',
-        required: true,
-        placeholder: 'GExxxxxxxxxxxx',
-        helpText: 'Die Seriennummer findest du auf deiner Wallbox oder in der go-e App'
-      },
-      {
         id: 'api_key',
-        label: 'API Token',
+        label: 'API-Schlüssel',
         type: 'password',
         required: true,
-        helpText: 'Den API Token findest du in der go-e App unter Einstellungen → API'
+        helpText: 'Zu finden in der go-e Cloud unter API'
+      },
+      {
+        id: 'charger_id',
+        label: 'Charger ID',
+        type: 'text',
+        required: true,
+        helpText: 'Die Seriennummer Ihrer Wallbox'
+      }
+    ]
+  },
+  {
+    id: 'easee',
+    name: 'Easee',
+    logo: '/logos/easee.png',
+    description: 'Easee Home und Charge',
+    fields: [
+      {
+        id: 'username',
+        label: 'Benutzername',
+        type: 'email',
+        required: true,
+        helpText: 'Ihre E-Mail-Adresse für die Easee Cloud'
+      },
+      {
+        id: 'password',
+        label: 'Passwort',
+        type: 'password',
+        required: true,
+        helpText: 'Ihr Passwort für die Easee Cloud'
+      },
+      {
+        id: 'charger_id',
+        label: 'Charger ID',
+        type: 'text',
+        required: true,
+        helpText: 'Die Seriennummer Ihrer Wallbox'
       }
     ]
   }

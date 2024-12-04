@@ -1,8 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
   images: {
-    domains: ['localhost'],
+    remotePatterns: [
+      // ... andere Patterns falls vorhanden ...
+    ],
+    unoptimized: true // Für lokale statische Bilder
   },
 }
 

@@ -11,7 +11,8 @@ import {
   Menu,
   Battery,
   User,
-  LogOut
+  LogOut,
+  Coffee
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
@@ -24,6 +25,7 @@ import {
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import { ModeToggle } from "@/components/ui/mode-toggle"
+import { SupportDialog } from "@/components/support-dialog"
 
 const routes = [
   {
@@ -83,7 +85,7 @@ export function Navbar({ children }: NavbarProps) {
     <div className="fixed top-0 left-0 right-0 z-50 border-b bg-background mb-6">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-          <div className="flex-1 md:flex-none">
+          <div className="w-48">
             <Link href="/" className="flex items-center">
               {children || (
                 <h1 className={`text-xl font-bold ${gradientTextStyle}`}>
@@ -93,7 +95,6 @@ export function Navbar({ children }: NavbarProps) {
             </Link>
           </div>
 
-          {/* Desktop Navigation - nur für eingeloggte Benutzer */}
           {isLoggedIn && (
             <nav className="hidden md:flex items-center justify-center flex-1">
               <div className="flex items-center space-x-1 rounded-lg bg-muted p-1">
@@ -116,33 +117,41 @@ export function Navbar({ children }: NavbarProps) {
             </nav>
           )}
 
-          {/* Profile Menu & Theme Toggle */}
-          <div className="hidden md:flex items-center gap-2">
-            <ModeToggle />
-            {isLoggedIn ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <User className="h-5 w-5" />
+          <div className="w-48 flex justify-end">
+            <div className="hidden md:flex items-center gap-2">
+              <SupportDialog 
+                trigger={
+                  <Button variant="ghost" size="sm">
+                    <Coffee className="mr-2 h-4 w-4" />
+                    Unterstützen
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Abmelden
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Link href="/dashboard">
-                <Button variant="default">
-                  Anmelden
-                </Button>
-              </Link>
-            )}
+                }
+              />
+              <ModeToggle />
+              {isLoggedIn ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <User className="h-5 w-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Abmelden
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Link href="/auth">
+                  <Button variant="default">
+                    Anmelden
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
 
-          {/* Mobile Navigation */}
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild className="md:hidden">
               <Button variant="ghost" size="icon">
@@ -174,7 +183,6 @@ export function Navbar({ children }: NavbarProps) {
                         ))}
                       </div>
                       
-                      {/* Mobile Profile Menu */}
                       <div className="mt-6 px-3 space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-sm font-medium">Design</span>
@@ -192,7 +200,7 @@ export function Navbar({ children }: NavbarProps) {
                     </>
                   ) : (
                     <div className="space-y-4">
-                      <Link href="/dashboard" className="w-full">
+                      <Link href="/auth" className="w-full">
                         <Button className="w-full" onClick={() => setOpen(false)}>
                           Anmelden
                         </Button>

@@ -6,11 +6,6 @@ import autoTable from 'jspdf-autotable'
 import { format, parseISO, differenceInMinutes } from 'date-fns'
 import { de } from 'date-fns/locale'
 
-interface DidDrawPageData {
-  pageNumber: number;
-  pageCount: number;
-}
-
 export async function POST(request: Request) {
   try {
     const cookieStore = cookies()
@@ -36,125 +31,132 @@ export async function POST(request: Request) {
 
     if (error) throw error
 
+    const colors: { [key: string]: [number, number, number] } = {
+      primary: [0, 113, 227],
+      secondary: [124, 58, 237],
+      text: [51, 51, 51],
+      muted: [128, 128, 128],
+      white: [255, 255, 255]
+    }
+
     const doc = new jsPDF()
     
-    // Styling-Konstanten
-    const primaryColor = [0, 113, 227]
-    const textColor = [51, 51, 51]
-    const secondaryColor = [128, 128, 128]
-    
-    // Header
-    doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.rect(0, 0, doc.internal.pageSize.width, 40, 'F')
+    // Header mit Gradient
+    doc.setFillColor(...colors.primary)
+    doc.rect(0, 0, doc.internal.pageSize.width, 35, 'F')
     
     // Logo & Titel
-    doc.setTextColor(255, 255, 255)
+    doc.setTextColor(...colors.white)
     doc.setFontSize(24)
-    doc.text('EVSync', 14, 25)
+    doc.setFont('helvetica', 'bold' as const)
+    doc.text('EVSync', 15, 20)
     doc.setFontSize(12)
-    doc.text('Ladebericht', 14, 35)
+    doc.setFont('helvetica', 'normal' as const)
+    doc.text('Ladebericht', 15, 30)
+
+    // Zeitraum Box mit abgerundeten Ecken
+    doc.setDrawColor(...colors.primary)
+    doc.setLineWidth(0.5)
+    doc.roundedRect(15, 45, doc.internal.pageSize.width - 30, 20, 3, 3)
     
-    // Zeitraum
-    doc.setTextColor(textColor[0], textColor[1], textColor[2])
-    doc.setFontSize(12)
-    doc.text('Zeitraum:', 14, 55)
-    const [r, g, b] = secondaryColor
-    doc.setTextColor(r, g, b)
+    doc.setTextColor(...colors.text)
+    doc.setFontSize(10)
+    doc.text('Zeitraum:', 20, 57)
+    doc.setTextColor(...colors.muted)
     doc.text(
       `${format(parseISO(startDate), 'PPP', { locale: de })} bis ${format(parseISO(endDate), 'PPP', { locale: de })}`,
-      45, 55
+      60, 57
     )
+
+    // Zusammenfassung mit modernem Design
+    doc.setFillColor(245, 247, 250) // Helles Grau für Box
+    doc.roundedRect(15, 75, doc.internal.pageSize.width - 30, 45, 3, 3, 'F')
     
-    // Zusammenfassung Box
-    doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.setLineWidth(0.1)
-    doc.roundedRect(14, 65, 182, 40, 3, 3)
-    
-    // Zusammenfassung Titel
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.setFontSize(14)
-    doc.text('Zusammenfassung', 20, 75)
+    doc.setTextColor(...colors.primary)
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold' as const)
+    doc.text('Zusammenfassung', 20, 87)
     
     // Berechne Gesamtwerte
     const totalEnergy = sessions.reduce((sum, session) => sum + session.energy_kwh, 0)
     const totalCost = sessions.reduce((sum, session) => sum + session.cost, 0)
     
-    // Zusammenfassung Details
+    // Info-Karten Layout
     doc.setFontSize(10)
-    doc.setTextColor(textColor[0], textColor[1], textColor[2])
+    doc.setFont('helvetica', 'normal')
     const summaryData = [
-      ['Gesamtenergie:', `${totalEnergy.toFixed(2)} kWh`],
-      ['Gesamtkosten:', `${totalCost.toFixed(2)} €`],
-      ['Anzahl Ladevorgänge:', `${sessions.length}`]
+      { label: 'Gesamtenergie:', value: `${totalEnergy.toFixed(2)} kWh` },
+      { label: 'Gesamtkosten:', value: `${totalCost.toFixed(2)} €` },
+      { label: 'Anzahl Ladevorgänge:', value: `${sessions.length}` }
     ]
     
-    let y = 85
-    summaryData.forEach(([label, value]) => {
-      doc.setTextColor(r, g, b)
+    let y = 100
+    summaryData.forEach(({ label, value }) => {
+      doc.setTextColor(...colors.muted)
       doc.text(label, 20, y)
-      doc.setTextColor(textColor[0], textColor[1], textColor[2])
-      doc.text(value, 80, y)
+      doc.setTextColor(...colors.text)
+      doc.setFont('helvetica', 'bold' as const)
+      doc.text(value, 100, y)
+      doc.setFont('helvetica', 'normal')
       y += 8
     })
-    
-    // Ladevorgänge Tabelle
-    doc.setFontSize(14)
-    doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
-    doc.text('Ladevorgänge', 14, 120)
+
+    // Ladevorgänge Tabelle mit modernem Design
+    doc.setTextColor(...colors.primary)
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold' as const)
+    doc.text('Ladevorgänge', 15, 130)
     
     // Tabellen-Styling
     const tableStyles = {
       headStyles: {
-        fillColor: [0, 113, 227] as [number, number, number],
-        textColor: [255, 255, 255] as [number, number, number],
+        fillColor: colors.primary,
+        textColor: colors.white,
         fontSize: 10,
         fontStyle: 'bold' as const,
+        lineWidth: 0,
       },
       bodyStyles: {
-        textColor: [51, 51, 51] as [number, number, number],
-        fontSize: 9,
+        textColor: colors.text,
+        fontSize: 8,
+        fontStyle: 'normal' as const,
+        lineWidth: 0,
       },
       alternateRowStyles: {
-        fillColor: [249, 250, 251] as [number, number, number],
+        fillColor: [245, 247, 250] as [number, number, number],
       },
       columnStyles: {
-        0: { cellWidth: 40 },  // Datum
-        1: { cellWidth: 25 },  // Dauer
-        2: { cellWidth: 30 },  // Energie
-        3: { cellWidth: 55 },  // Tarif
-        4: { cellWidth: 30, halign: 'right' as const },  // Kosten
+        0: { cellWidth: 35 },  // Datum - schmaler
+        1: { cellWidth: 20 },  // Dauer - schmaler
+        2: { cellWidth: 25 },  // Energie - schmaler
+        3: { cellWidth: 45 },  // Tarif - breiter
+        4: { cellWidth: 25, halign: 'right' as const }, // Kosten - schmaler
       },
-      margin: { top: 130 },
-      startY: 130,
-      didDrawPage: function(data: DidDrawPageData) {
-        // Header auf jeder neuen Seite
+      startY: 135,
+      margin: { left: 15, right: 15, bottom: 15 },
+      rowPageBreak: 'auto' as const,  // Verhindert Seitenumbrüche innerhalb von Zeilen
+      showFoot: 'lastPage' as const,   // Zeigt die Fußzeile nur auf der letzten Seite
+      tableLineColor: [230, 230, 230] as [number, number, number],
+      tableLineWidth: 0.1,    // Feinere Linien
+      didDrawPage: function(data: any) {
+        // Setze die Startposition für die nächste Seite
         if (data.pageNumber > 1) {
-          doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])
-          doc.rect(0, 0, doc.internal.pageSize.width, 40, 'F')
-          
-          doc.setTextColor(255, 255, 255)
-          doc.setFontSize(24)
-          doc.text('EVSync', 14, 25)
-          doc.setFontSize(12)
-          doc.text('Ladebericht', 14, 35)
+          data.settings.margin.top = 15  // Minimaler Abstand zum oberen Rand
         }
-        
+
         // Footer auf jeder Seite
-        doc.setFontSize(8)
-        doc.setTextColor(r, g, b)
+        doc.setFontSize(7)
+        doc.setTextColor(...colors.muted)
         doc.text(
-          `Erstellt am ${format(new Date(), 'PPp', { locale: de })} - Seite ${data.pageNumber} von ${data.pageCount}`,
+          `EVSync - Seite ${data.pageNumber} von ${data.pageCount}`,
           doc.internal.pageSize.width / 2,
-          doc.internal.pageSize.height - 10,
+          doc.internal.pageSize.height - 8,
           { align: 'center' }
         )
-      },
-      showHead: 'everyPage' as const,
-      tableLineColor: [230, 230, 230] as [number, number, number],
-      tableLineWidth: 0.1,
+      }
     }
     
-    // Tabellendaten
+    // Tabellendaten mit verbessertem Layout
     autoTable(doc, {
       head: [['Datum', 'Dauer', 'Energie', 'Tarif', 'Kosten']],
       body: sessions.map(session => {
@@ -177,7 +179,6 @@ export async function POST(request: Request) {
     
     // Konvertiere PDF zu Base64
     const pdfBase64 = doc.output('datauristring')
-
     return NextResponse.json({ pdf: pdfBase64 })
   } catch (error) {
     console.error('PDF Generierung fehlgeschlagen:', error)
