@@ -50,6 +50,11 @@ import { cn } from '@/lib/utils'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
+interface DidDrawPageData {
+  pageNumber: number;
+  pageCount: number;
+}
+
 type ChargingSession = {
   id: string
   wallbox_id: string
@@ -60,6 +65,13 @@ type ChargingSession = {
   tariff_name: string
   energy_rate: number
 }
+
+type DailyData = {
+  date: string;
+  energy: number;
+  cost: number;
+  sessions: number;
+};
 
 const PAGE_SIZES = [10, 20, 50, 100]
 
@@ -92,6 +104,7 @@ export default function ReportsPage() {
         title: "Fehler",
         description: "Ladevorgänge konnten nicht geladen werden",
       })
+      console.error(error)
     } finally {
       setLoading(false)
     }
@@ -123,37 +136,38 @@ export default function ReportsPage() {
 
       // Lade die aktualisierten Daten
       await loadSessions()
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: error.message,
+        description: error instanceof Error ? error.message : 'Fehler beim Synchronisieren',
       })
+      console.error(error)
     } finally {
       setIsSyncing(false)
     }
   }
 
   // Gruppiere die Daten nach Tagen für die Diagramme
-  const dailyData = sessions.reduce((acc: any[], session) => {
-    const date = startOfDay(new Date(session.start_time))
-    const dateStr = format(date, 'yyyy-MM-dd')
+  const dailyData = sessions.reduce<DailyData[]>((acc, session) => {
+    const date = startOfDay(new Date(session.start_time));
+    const dateStr = format(date, 'yyyy-MM-dd');
     
-    const existingDay = acc.find(d => d.date === dateStr)
+    const existingDay = acc.find(d => d.date === dateStr);
     if (existingDay) {
-      existingDay.energy += session.energy_kwh
-      existingDay.cost += session.cost
-      existingDay.sessions += 1
+      existingDay.energy += session.energy_kwh;
+      existingDay.cost += session.cost;
+      existingDay.sessions += 1;
     } else {
       acc.push({
         date: dateStr,
         energy: session.energy_kwh,
         cost: session.cost,
-        sessions: 1
-      })
+        sessions: 1,
+      });
     }
-    return acc
-  }, []).sort((a, b) => a.date.localeCompare(b.date))
+    return acc;
+  }, []).sort((a, b) => a.date.localeCompare(b.date));
 
   // Sortiere und filtere die Sessions
   const sortedSessions = useMemo(() => {
@@ -269,7 +283,7 @@ export default function ReportsPage() {
       },
       margin: { top: 130 },
       startY: 130, // Fester Startpunkt für die erste Seite
-      didDrawPage: function(data: any) {
+      didDrawPage: function(data: DidDrawPageData) {
         // Setze den Header auf jeder neuen Seite
         if (data.pageNumber > 1) {
           doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2])

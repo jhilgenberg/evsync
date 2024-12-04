@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       await service.getStatus()
     } catch (_error: unknown) {
       return NextResponse.json(
-        { error: 'Verbindung konnte nicht hergestellt werden' },
+        { error: 'Verbindung konnte nicht hergestellt werden:', _error },
         { status: 400 }
       )
     }
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET(_request: Request) {
+export async function GET() {
   try {
     const cookieStore = cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })

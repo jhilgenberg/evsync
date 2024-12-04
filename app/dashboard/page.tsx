@@ -58,6 +58,7 @@ export default function Dashboard() {
         title: "Fehler",
         description: "Dashboard konnte nicht geladen werden",
       })
+      console.error(error)
     } finally {
       setLoading(false)
     }

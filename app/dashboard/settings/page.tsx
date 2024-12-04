@@ -26,6 +26,7 @@ export default function SettingsPage() {
         title: "Fehler",
         description: "Tarife konnten nicht geladen werden",
       })
+      console.error(error)
     }
   }, [toast])
 

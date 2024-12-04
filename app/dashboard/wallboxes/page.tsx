@@ -29,6 +29,7 @@ export default function WallboxesPage() {
         title: "Fehler",
         description: "Wallboxen konnten nicht geladen werden",
       })
+      console.error(error)
     } finally {
       setLoading(false)
     }
