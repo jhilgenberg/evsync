@@ -1,17 +1,41 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Card, CardContent } from '@/components/ui/card'
-import { WallboxConnection, WallboxStatus, type PhaseInfo } from '@/types/wallbox'
-import { Battery, Zap, ThermometerSun, RefreshCw, Power } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { WallboxConnection, type PhaseInfo } from '@/types/wallbox'
 import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+
+interface WallboxStatus {
+  isOnline: boolean
+  carState: string
+  currentPower: number
+  totalEnergy: number
+  temperature: number
+  firmware: string
+  wifiConnected: boolean
+  details: {
+    power: {
+      totalPower: number
+      phases: {
+        [key: string]: {
+          voltage: number
+          current: number
+          power: number
+          powerFactor: number
+        }
+      }
+    }
+  }
+}
 
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
   connection: WallboxConnection
+  status: WallboxStatus | undefined
 }
 
 function PhaseInfo({ phase, label }: { phase: PhaseInfo; label: string }) {
@@ -44,130 +68,145 @@ function PhaseInfo({ phase, label }: { phase: PhaseInfo; label: string }) {
   )
 }
 
-export function WallboxDetailsDialog({ open, onOpenChange, connection }: Props) {
-  const [status, setStatus] = useState<WallboxStatus | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  const fetchStatus = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/wallboxes/${connection.id}/status`)
-      if (!response.ok) throw new Error('Fehler beim Laden des Status')
-      const data: WallboxStatus = await response.json()
-      setStatus(data)
-    } catch (error) {
-      console.error('Status Fehler:', error)
-    } finally {
-      setLoading(false)
-    }
-  }, [connection.id])
-
-  useEffect(() => {
-    if (open) {
-      fetchStatus()
-      const interval = setInterval(fetchStatus, 5000)
-      return () => clearInterval(interval)
-    }
-  }, [open, fetchStatus])
+export function WallboxDetailsDialog({ 
+  open, 
+  onOpenChange, 
+  connection, 
+  status 
+}: Props) {
+  if (!status) return null
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{connection.name}</DialogTitle>
         </DialogHeader>
 
-        {loading ? (
-          <div className="flex justify-center py-8">
-            <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Status-Karten */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex flex-col items-center text-center">
-                    <Power className="h-5 w-5 mb-2 text-blue-500" />
-                    <div className="text-sm font-medium">Status</div>
-                    <div className="text-2xl font-bold">
-                      {status?.carState || 'Unbekannt'}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex flex-col items-center text-center">
-                    <Zap className="h-5 w-5 mb-2 text-yellow-500" />
-                    <div className="text-sm font-medium">Leistung</div>
-                    <div className="text-2xl font-bold">
-                      {status?.currentPower.toFixed(2)} kW
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex flex-col items-center text-center">
-                    <Battery className="h-5 w-5 mb-2 text-green-500" />
-                    <div className="text-sm font-medium">Geladen</div>
-                    <div className="text-2xl font-bold">
-                      {status?.totalEnergy.toFixed(2)} kWh
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex flex-col items-center text-center">
-                    <ThermometerSun className="h-5 w-5 mb-2 text-orange-500" />
-                    <div className="text-sm font-medium">Temperatur</div>
-                    <div className="text-2xl font-bold">
-                      {status?.temperature}°C
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Phasen-Details */}
-            {status?.details.power && (
-              <Card>
-                <CardContent className="pt-6">
-                  <h3 className="text-lg font-medium mb-4">Phasen-Details</h3>
-                  <div className="space-y-6">
-                    <PhaseInfo phase={status.details.power.phases.l1} label="Phase L1" />
-                    <PhaseInfo phase={status.details.power.phases.l2} label="Phase L2" />
-                    <PhaseInfo phase={status.details.power.phases.l3} label="Phase L3" />
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Weitere Informationen */}
-            <Card>
-              <CardContent className="pt-6">
-                <h3 className="text-lg font-medium mb-4">Weitere Informationen</h3>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium">Firmware:</span> {status?.firmware}
-                  </div>
-                  <div>
-                    <span className="font-medium">WLAN Status:</span>{' '}
-                    {status?.wifiConnected ? 'Verbunden' : 'Nicht verbunden'}
-                  </div>
-                  <div>
-                    <span className="font-medium">Letzte Aktualisierung:</span>{' '}
-                    {format(new Date(), 'PPp', { locale: de })}
-                  </div>
+        {/* Status-Karten mit allen wichtigen Informationen */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Status</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center">
+                  <div className={cn(
+                    "h-2 w-2 rounded-full mr-2",
+                    status?.isOnline ? "bg-green-500" : "bg-red-500"
+                  )} />
+                  <span className="font-medium">
+                    {status?.isOnline ? "Online" : "Offline"}
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="text-sm text-muted-foreground">
+                  {status?.carState || 'Unbekannt'}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Aktuelle Leistung</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {status?.currentPower.toFixed(2)} kW
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Gesamtenergie</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {status?.totalEnergy.toFixed(2)} kWh
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Temperatur</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {status?.temperature}°C
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Phasen-Informationen mit scrollbarer Tabelle */}
+        <div className="space-y-4 mt-4">
+          <h3 className="font-medium">Phasen-Details</h3>
+          <div className="overflow-x-auto -mx-6 px-6">
+            <table className="w-full min-w-[400px]">
+              <thead>
+                <tr className="border-b">
+                  <th className="text-left py-2 font-medium">Phase</th>
+                  <th className="text-right py-2 font-medium">Spannung</th>
+                  <th className="text-right py-2 font-medium">Strom</th>
+                  <th className="text-right py-2 font-medium">Leistung</th>
+                  <th className="text-right py-2 font-medium">Leistungsfaktor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.entries(status?.details.power.phases || {}).map(([phase, info]) => (
+                  <tr key={phase} className="border-b">
+                    <td className="py-2">{phase.toUpperCase()}</td>
+                    <td className="text-right py-2">{info.voltage.toFixed(1)} V</td>
+                    <td className="text-right py-2">{info.current.toFixed(1)} A</td>
+                    <td className="text-right py-2">{info.power.toFixed(2)} kW</td>
+                    <td className="text-right py-2">{info.powerFactor}%</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="font-medium">
+                  <td className="py-2">Gesamt</td>
+                  <td className="text-right py-2">-</td>
+                  <td className="text-right py-2">-</td>
+                  <td className="text-right py-2">{status?.details.power.totalPower.toFixed(2)} kW</td>
+                  <td className="text-right py-2">-</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
-        )}
+        </div>
+
+        {/* Verbindungs-Details */}
+        <div className="space-y-4 mt-4">
+          <h3 className="font-medium">Verbindungs-Details</h3>
+          <div className="space-y-2 text-sm">
+            <div className="flex flex-col sm:flex-row sm:justify-between py-2 border-b">
+              <span className="text-muted-foreground">Firmware</span>
+              <span className="font-medium">{status?.firmware}</span>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:justify-between py-2 border-b">
+              <span className="text-muted-foreground">WLAN Status</span>
+              <span className="font-medium">
+                {status?.wifiConnected ? "Verbunden" : "Nicht verbunden"}
+              </span>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:justify-between py-2 border-b">
+              <span className="text-muted-foreground">Letzte Aktualisierung</span>
+              <span className="font-medium">
+                {format(new Date(), 'PPp', { locale: de })}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="mt-6">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Schließen
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

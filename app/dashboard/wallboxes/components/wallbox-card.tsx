@@ -1,153 +1,111 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { WallboxConnection, WallboxStatus, WallboxCarState } from '@/types/wallbox'
-import { Battery, Plug, Zap, RefreshCw, ThermometerSun } from 'lucide-react'
-import { cn } from '@/lib/utils'
-import { WallboxDetailsDialog } from './wallbox-details-dialog'
-import Image from 'next/image'
+'use client'
 
-type Props = {
+import { useState, useEffect, useCallback } from 'react'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { WallboxConnection, WallboxStatus } from '@/types/wallbox'
+import { WallboxDetailsDialog } from './wallbox-details-dialog'
+import { Zap, Battery, RefreshCw } from 'lucide-react'
+import Image from 'next/image'
+import { useToast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
+
+interface Props {
   connection: WallboxConnection
   providerName: string
   providerLogo: string
 }
 
 export function WallboxCard({ connection, providerName, providerLogo }: Props) {
-  const [status, setStatus] = useState<WallboxStatus | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
+  const [status, setStatus] = useState<WallboxStatus>()
+  const { toast } = useToast()
 
-  const fetchStatus = useCallback(async () => {
+  const loadStatus = useCallback(async () => {
     try {
-      setIsRefreshing(true)
       const response = await fetch(`/api/wallboxes/${connection.id}/status`)
-      if (!response.ok) throw new Error('Fehler beim Laden des Status')
-      const data: WallboxStatus = await response.json()
+      if (!response.ok) throw new Error()
+      const data = await response.json()
       setStatus(data)
     } catch (error) {
-      console.error('Status Fehler:', error)
-    } finally {
-      setLoading(false)
-      setIsRefreshing(false)
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Status konnte nicht geladen werden",
+      })
     }
-  }, [connection.id])
+  }, [connection.id, toast])
 
+  // Automatische Aktualisierung alle 30 Sekunden
   useEffect(() => {
-    fetchStatus()
-    const interval = setInterval(fetchStatus, 30000)
+    loadStatus()
+    const interval = setInterval(loadStatus, 30000)
     return () => clearInterval(interval)
-  }, [fetchStatus])
+  }, [loadStatus])
 
-  const getCarStatusText = (carState: WallboxCarState) => {
-    switch (carState) {
-      case WallboxCarState.READY: return 'Bereit, kein Fahrzeug'
-      case WallboxCarState.CHARGING: return 'Fahrzeug lädt'
-      case WallboxCarState.WAITING: return 'Warte auf Fahrzeug'
-      case WallboxCarState.FINISHED: return 'Ladung beendet'
-      default: return 'Unbekannt'
-    }
+  const handleShowDetails = () => {
+    setShowDetails(true)
   }
+
+  const isCharging = status?.carState === 'CHARGING'
 
   return (
     <>
-      <Card className="overflow-hidden">
-        <CardHeader className="space-y-1">
-          <div className="flex justify-between items-start">
-            <div className="flex items-center space-x-2">
-              <Image 
-                src={providerLogo} 
-                alt={providerName} 
-                width={32}
-                height={32}
-                className="w-8 h-8 object-contain"
+      <Card className="hover:shadow-lg transition-shadow">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-4">
+            <div className="h-12 w-12 relative flex-shrink-0">
+              <Image
+                src={providerLogo}
+                alt={providerName}
+                width={48}
+                height={48}
+                className="object-contain"
               />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={fetchStatus}
-                disabled={isRefreshing}
-                className={cn(
-                  "h-8 w-8 p-0",
-                  isRefreshing && "animate-spin"
-                )}
-              >
-                <RefreshCw className="h-4 w-4" />
-                <span className="sr-only">Aktualisieren</span>
-              </Button>
+              <div className={cn(
+                "absolute -top-1 -right-1 h-3 w-3 rounded-full border-2 border-background",
+                status?.isOnline ? "bg-green-500" : "bg-red-500"
+              )} />
             </div>
-            {status?.isOnline ? (
-              <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
-                Online
-              </span>
-            ) : (
-              <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
-                Offline
-              </span>
-            )}
+            <div className="flex-1 min-w-0">
+              <h3 className="font-medium truncate">{connection.name}</h3>
+              <p className="text-sm text-muted-foreground truncate">
+                {providerName}
+              </p>
+            </div>
           </div>
-          <CardTitle>{connection.name}</CardTitle>
-          <CardDescription>
-            {status?.wifiConnected ? 'Verbunden' : 'Nicht verbunden'} • 
-            Firmware: {status?.firmware || 'Unbekannt'}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {loading ? (
-            <div className="flex items-center justify-center h-32">
-              <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Plug className="mr-1 h-4 w-4" />
-                    Status
-                  </div>
-                  <p className="font-medium">
-                    {status ? getCarStatusText(status.carState) : 'Unbekannt'}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Zap className="mr-1 h-4 w-4" />
-                    Leistung
-                  </div>
-                  <p className="font-medium">
-                    {status?.currentPower.toFixed(2)} kW
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Battery className="mr-1 h-4 w-4" />
-                    Geladen
-                  </div>
-                  <p className="font-medium">
-                    {status?.totalEnergy.toFixed(2)} kWh
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <ThermometerSun className="mr-1 h-4 w-4" />
-                    Temperatur
-                  </div>
-                  <p className="font-medium">
-                    {status?.temperature}°C
-                  </p>
-                </div>
-              </div>
 
-              <Button 
-                variant="outline" 
-                className="w-full"
-                onClick={() => setShowDetails(true)}
-              >
-                Details
-              </Button>
-            </>
+          <div className="mt-6 grid grid-cols-2 gap-4">
+            <div className="flex items-center gap-2">
+              <Zap className={cn(
+                "h-4 w-4",
+                isCharging && "text-green-500 animate-pulse"
+              )} />
+              <div>
+                <p className="text-sm text-muted-foreground">Leistung</p>
+                <p className="font-medium">{status?.currentPower.toFixed(1)} kW</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Battery className="h-4 w-4" />
+              <div>
+                <p className="text-sm text-muted-foreground">Geladen</p>
+                <p className="font-medium">{status?.totalEnergy.toFixed(1)} kWh</p>
+              </div>
+            </div>
+          </div>
+
+          {isCharging && (
+            <div className="mt-4 relative h-2 bg-muted rounded-full overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-green-500 animate-progress" />
+            </div>
           )}
+
+          <div className="mt-4 flex justify-end">
+            <Button variant="outline" onClick={handleShowDetails}>
+              Details
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -155,6 +113,7 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
         open={showDetails}
         onOpenChange={setShowDetails}
         connection={connection}
+        status={status}
       />
     </>
   )
