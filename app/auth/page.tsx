@@ -39,6 +39,7 @@ export default function AuthPage() {
         title: "Fehler beim Anmelden",
         description: "Bitte überprüfen Sie Ihre Eingaben.",
       })
+      console.error(error)
     } finally {
       setIsLoading(false)
     }
@@ -92,6 +93,7 @@ export default function AuthPage() {
         title: "Fehler bei der Registrierung",
         description: "Bitte überprüfen Sie Ihre Eingaben.",
       })
+      console.error(error)
     } finally {
       setIsLoading(false)
     }

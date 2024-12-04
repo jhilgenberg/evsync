@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState } from 'react'
 import {
   Table,
   TableBody,
@@ -20,9 +20,9 @@ import { cn } from '@/lib/utils'
 
 interface DataTableProps<T> {
   columns: {
-    accessorKey: string
+    accessorKey: Extract<keyof T, string | number>
     header: string
-    cell?: (value: any) => React.ReactNode
+    cell?: (value: T[Extract<keyof T, string | number>]) => React.ReactNode
   }[]
   data: T[]
   pagination?: {
@@ -47,6 +47,17 @@ export function DataTable<T>({
     currentPage * pageSize
   )
 
+  const renderCellContent = (value: T[Extract<keyof T, string | number>]): React.ReactNode => {
+    if (React.isValidElement(value)) {
+      return value
+    }
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+      return value.toString()
+    }
+    // Fallback für andere Typen
+    return String(value)
+  }
+
   return (
     <div className={className}>
       <div className="rounded-md border">
@@ -54,7 +65,7 @@ export function DataTable<T>({
           <TableHeader>
             <TableRow>
               {columns.map((column) => (
-                <TableHead key={column.accessorKey}>
+                <TableHead key={String(column.accessorKey)}>
                   {column.header}
                 </TableHead>
               ))}
@@ -64,10 +75,10 @@ export function DataTable<T>({
             {paginatedData.map((row, i) => (
               <TableRow key={i}>
                 {columns.map((column) => (
-                  <TableCell key={column.accessorKey}>
+                  <TableCell key={String(column.accessorKey)}>
                     {column.cell 
-                      ? column.cell((row as any)[column.accessorKey])
-                      : (row as any)[column.accessorKey]
+                      ? column.cell(row[column.accessorKey])
+                      : renderCellContent(row[column.accessorKey])
                     }
                   </TableCell>
                 ))}

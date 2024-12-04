@@ -6,6 +6,14 @@ import autoTable from 'jspdf-autotable'
 import { format, parseISO, differenceInMinutes } from 'date-fns'
 import { de } from 'date-fns/locale'
 
+type didPageDraw = {
+  pageNumber: number
+  pageCount: number
+  settings: {
+    margin: { top: number }
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const cookieStore = cookies()
@@ -138,7 +146,7 @@ export async function POST(request: Request) {
       showFoot: 'lastPage' as const,   // Zeigt die Fußzeile nur auf der letzten Seite
       tableLineColor: [230, 230, 230] as [number, number, number],
       tableLineWidth: 0.1,    // Feinere Linien
-      didDrawPage: function(data: any) {
+      didDrawPage: function(data: didPageDraw) {
         // Setze die Startposition für die nächste Seite
         if (data.pageNumber > 1) {
           data.settings.margin.top = 15  // Minimaler Abstand zum oberen Rand

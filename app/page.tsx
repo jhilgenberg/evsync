@@ -12,8 +12,7 @@ import {
   Wallet,
   Smartphone,
   Check,
-  Plus,
-  Coffee
+  Plus
 } from 'lucide-react'
 import Image from 'next/image'
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
@@ -23,7 +22,6 @@ import { CardHeader, CardTitle, CardDescription, CardContent } from "@/component
 import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { WALLBOX_PROVIDERS } from '@/config/wallbox-providers'
-import { Separator } from "@/components/ui/separator"
 
 const supportedWallboxes = WALLBOX_PROVIDERS.map(provider => ({
   name: provider.name,
@@ -111,6 +109,7 @@ export default function LandingPage() {
         title: "Fehler",
         description: "Ihre Anfrage konnte nicht gesendet werden.",
       })
+      console.error(error)
     } finally {
       setIsSubmitting(false)
     }
