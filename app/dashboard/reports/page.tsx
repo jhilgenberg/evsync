@@ -292,7 +292,7 @@ export default function ReportsPage() {
     const previousStart = new Date(currentStart.getTime() - duration)
     const previousEnd = new Date(currentStart)
     
-    // Filtere Sessions für beide Zeitr��ume
+    // Filtere Sessions für beide Zeitrume
     const currentSessions = sessions.filter(session => {
       const date = new Date(session.start_time)
       return date >= currentStart && date <= currentEnd
@@ -359,19 +359,20 @@ export default function ReportsPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center sm:flex-row flex-col">
         <h1 className="text-3xl font-medium">Ladeberichte</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2 sm:pt-0 pt-4">
           <Button 
             variant="outline"
             onClick={() => setScheduleDialogOpen(true)}
+            className="w-full sm:w-auto"
           >
             <Calendar className="mr-2 h-4 w-4" />
             Automatisieren
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="w-full sm:w-auto">
                 <Download className="mr-2 h-4 w-4" />
                 Export
               </Button>
@@ -387,7 +388,7 @@ export default function ReportsPage() {
           <Button 
             onClick={handleSync} 
             disabled={isSyncing}
-            className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
+            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
           >
             <RefreshCw className={cn(
               "mr-2 h-4 w-4",
