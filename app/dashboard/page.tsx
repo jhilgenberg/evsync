@@ -130,8 +130,8 @@ export default function Dashboard() {
           disabled={isSyncing}
           className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
         >
-          <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing && "animate-spin"}`} />
-          Synchronisieren
+          <RefreshCw className={`sm:mr-2 h-4 w-4 ${isSyncing && "animate-spin"}`} />
+          <span className="hidden sm:inline">Synchronisieren</span>
         </Button>
       </div>
 

@@ -391,10 +391,10 @@ export default function ReportsPage() {
             className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
           >
             <RefreshCw className={cn(
-              "mr-2 h-4 w-4",
+              "mr-0 sm:mr-2 h-4 w-4",
               isSyncing && "animate-spin"
             )} />
-            Synchronisieren
+            <span className="sm:inline">Synchronisieren</span>
           </Button>
         </div>
       </div>

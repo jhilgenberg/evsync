@@ -80,8 +80,8 @@ export default function WallboxesPage() {
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-medium">Wallboxen</h1>
         <Button onClick={() => setIsDialogOpen(true)}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Wallbox hinzufügen
+          <PlusCircle className="sm:mr-2 h-4 w-4" />
+          <span className="hidden sm:inline">Wallbox hinzufügen</span>
         </Button>
       </div>
 

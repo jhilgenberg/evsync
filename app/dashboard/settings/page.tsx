@@ -72,8 +72,8 @@ export default function SettingsPage() {
             setSelectedTariff(undefined)
             setIsDialogOpen(true)
           }}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Tarif hinzufügen
+            <PlusCircle className="sm:mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Tarif hinzufügen</span>
           </Button>
         </CardHeader>
         <CardContent>
