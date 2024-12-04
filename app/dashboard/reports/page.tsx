@@ -292,7 +292,7 @@ export default function ReportsPage() {
     const previousStart = new Date(currentStart.getTime() - duration)
     const previousEnd = new Date(currentStart)
     
-    // Filtere Sessions für beide Zeiträume
+    // Filtere Sessions für beide Zeitr��ume
     const currentSessions = sessions.filter(session => {
       const date = new Date(session.start_time)
       return date >= currentStart && date <= currentEnd
@@ -358,7 +358,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-medium">Ladeberichte</h1>
         <div className="flex gap-2">

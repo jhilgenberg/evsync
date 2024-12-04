@@ -3,90 +3,176 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import { 
-  LayoutDashboard, 
-  Battery, 
+  Home, 
+  BarChart, 
   Settings, 
-  FileText,
+  Menu,
+  Battery,
+  User,
   LogOut
 } from 'lucide-react'
+import { useState } from 'react'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
+import { ModeToggle } from "@/components/ui/mode-toggle"
 
-const navigation = [
+const routes = [
   {
-    name: 'Dashboard',
+    label: 'Dashboard',
+    icon: Home,
     href: '/dashboard',
-    icon: LayoutDashboard
+    color: 'text-sky-500',
   },
   {
-    name: 'Wallboxen',
+    label: 'Wallboxen',
+    icon: Battery,
     href: '/dashboard/wallboxes',
-    icon: Battery
+    color: 'text-violet-500',
   },
   {
-    name: 'Berichte',
+    label: 'Berichte',
+    icon: BarChart,
     href: '/dashboard/reports',
-    icon: FileText
+    color: 'text-pink-700',
   },
   {
-    name: 'Einstellungen',
+    label: 'Einstellungen',
+    icon: Settings,
     href: '/dashboard/settings',
-    icon: Settings
+    color: 'text-orange-700',
   },
 ]
 
-export function Navbar() {
+const gradientTextStyle = "bg-gradient-to-r from-blue-600 via-blue-500 to-violet-500 bg-clip-text text-transparent bg-[size:200%] animate-gradient"
+
+interface NavbarProps {
+  children?: React.ReactNode
+}
+
+export function Navbar({ children }: NavbarProps) {
   const pathname = usePathname()
+  const [open, setOpen] = useState(false)
   const router = useRouter()
   const supabase = createClientComponentClient()
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    router.push('/')
+    router.refresh()
   }
 
   return (
-    <nav className="fixed top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="fixed top-0 left-0 right-0 z-50 border-b bg-background mb-6">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-14 items-center justify-between">
-          <div className="flex items-center space-x-8">
-            <Link href="/dashboard" className="flex items-center space-x-2">
-              <span className="font-bold">
-                EVSync
-              </span>
+        <div className="flex h-16 items-center justify-between">
+          <div className="flex-1 md:flex-none">
+            <Link href="/dashboard" className="flex items-center">
+              {children || (
+                <h1 className={`text-xl font-bold ${gradientTextStyle}`}>
+                  EVSync
+                </h1>
+              )}
             </Link>
-            <nav className="flex items-center space-x-6 text-sm font-medium">
-              {navigation.map((item) => {
-                const Icon = item.icon
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "flex items-center space-x-2 transition-colors hover:text-foreground/80",
-                      pathname === item.href
-                        ? "text-foreground"
-                        : "text-foreground/60"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span>{item.name}</span>
-                  </Link>
-                )
-              })}
-            </nav>
           </div>
-          <Button
-            variant="ghost"
-            onClick={handleSignOut}
-          >
-            <LogOut className="mr-2 h-4 w-4" />
-            Abmelden
-          </Button>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center justify-center flex-1">
+            <div className="flex items-center space-x-1 rounded-lg bg-muted p-1">
+              {routes.map((route) => (
+                <Link
+                  key={route.href}
+                  href={route.href}
+                  className={cn(
+                    'flex items-center space-x-2 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    pathname === route.href
+                      ? 'bg-background text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:bg-background hover:text-foreground'
+                  )}
+                >
+                  <route.icon className={cn('h-4 w-4', route.color)} />
+                  <span>{route.label}</span>
+                </Link>
+              ))}
+            </div>
+          </nav>
+
+          {/* Profile Menu */}
+          <div className="hidden md:flex items-center gap-2">
+            <ModeToggle />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <User className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleSignOut} className="text-red-600">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Abmelden
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Mobile Navigation */}
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="fixed inset-y-0 right-0 h-full w-72 z-50">
+              <div className="flex flex-col space-y-4 py-4">
+                <div className="px-3 py-2">
+                  <h2 className="mb-2 px-4 text-lg font-semibold">Navigation</h2>
+                  <div className="space-y-1">
+                    {routes.map((route) => (
+                      <Link
+                        key={route.href}
+                        href={route.href}
+                        onClick={() => setOpen(false)}
+                        className={cn(
+                          'flex items-center rounded-lg px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground',
+                          pathname === route.href
+                            ? 'bg-accent text-accent-foreground'
+                            : 'transparent'
+                        )}
+                      >
+                        <route.icon className={cn('mr-2 h-4 w-4', route.color)} />
+                        {route.label}
+                      </Link>
+                    ))}
+                  </div>
+                  
+                  {/* Mobile Profile Menu */}
+                  <div className="mt-6 px-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Design</span>
+                      <ModeToggle />
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full justify-start text-red-600"
+                      onClick={handleSignOut}
+                    >
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Abmelden
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
-    </nav>
+    </div>
   )
 } 

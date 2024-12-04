@@ -76,7 +76,7 @@ export default function WallboxesPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-8">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-medium">Wallboxen</h1>
         <Button onClick={() => setIsDialogOpen(true)}>

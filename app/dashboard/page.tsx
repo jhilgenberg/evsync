@@ -122,7 +122,7 @@ export default function Dashboard() {
   ]
 
   return (
-    <div className="space-y-8">
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-medium">Dashboard</h1>
         <Button 
