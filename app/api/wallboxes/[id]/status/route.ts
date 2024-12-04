@@ -5,21 +5,11 @@ import { createWallboxService } from '@/services/wallbox/factory'
 
 export async function GET(
   request: Request,
-  context: { params: { id: string } }
+  { params }: { params: { id: string } }
 ) {
   try {
-    // Warte auf die Cookies und ID
-    const [cookieStore, id] = await Promise.all([
-      cookies(),
-      Promise.resolve(context.params.id)
-    ])
-
-    // Erstelle den Supabase-Client mit den aufgelösten Cookies
-    const supabase = createRouteHandlerClient({ 
-      cookies: () => cookieStore 
-    })
-
-    // Überprüfe die Authentifizierung
+    const cookieStore = cookies()
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { session } } = await supabase.auth.getSession()
 
     if (!session) {
@@ -33,7 +23,7 @@ export async function GET(
     const { data: connection, error } = await supabase
       .from('wallbox_connections')
       .select('*')
-      .eq('id', id)
+      .eq('id', params.id)
       .single()
 
     if (error || !connection) {
@@ -43,7 +33,14 @@ export async function GET(
       )
     }
 
-    // Hole den Status von der Wallbox
+    // Prüfe ob die Wallbox dem Benutzer gehört
+    if (connection.user_id !== session.user.id) {
+      return NextResponse.json(
+        { error: 'Nicht autorisiert' },
+        { status: 403 }
+      )
+    }
+
     const service = createWallboxService(connection)
     const status = await service.getStatus()
 
@@ -51,13 +48,13 @@ export async function GET(
     await supabase
       .from('wallbox_connections')
       .update({ last_sync: new Date().toISOString() })
-      .eq('id', id)
+      .eq('id', params.id)
 
     return NextResponse.json(status)
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten'
+  } catch (error) {
+    console.error('Wallbox Status Fehler:', error)
     return NextResponse.json(
-      { error: errorMessage },
+      { error: error instanceof Error ? error.message : 'Unbekannter Fehler' },
       { status: 500 }
     )
   }

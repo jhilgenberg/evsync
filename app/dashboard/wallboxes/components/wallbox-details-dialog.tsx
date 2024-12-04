@@ -3,15 +3,8 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Card, CardContent } from '@/components/ui/card'
-import { WallboxConnection } from '@/types/wallbox'
-import { GoEStatus } from '@/types/go-e'
-import { 
-  Battery, 
-  Zap,  
-  ThermometerSun,
-  RefreshCw,
-  Power
-} from 'lucide-react'
+import { WallboxConnection, WallboxStatus, type PhaseInfo } from '@/types/wallbox'
+import { Battery, Zap, ThermometerSun, RefreshCw, Power } from 'lucide-react'
 import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
 
@@ -21,15 +14,45 @@ type Props = {
   connection: WallboxConnection
 }
 
+function PhaseInfo({ phase, label }: { phase: PhaseInfo; label: string }) {
+  if (!phase) return null
+
+  return (
+    <div className="space-y-1">
+      <h4 className="font-medium">{label}</h4>
+      <div className="grid grid-cols-2 gap-2 text-sm">
+        <div>
+          <span className="text-muted-foreground">Spannung:</span>
+          <span className="ml-2">{phase.voltage.toFixed(1)} V</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Strom:</span>
+          <span className="ml-2">{phase.current.toFixed(1)} A</span>
+        </div>
+        <div>
+          <span className="text-muted-foreground">Leistung:</span>
+          <span className="ml-2">{phase.power.toFixed(2)} kW</span>
+        </div>
+        {phase.powerFactor > 0 && (
+          <div>
+            <span className="text-muted-foreground">Leistungsfaktor:</span>
+            <span className="ml-2">{phase.powerFactor}%</span>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function WallboxDetailsDialog({ open, onOpenChange, connection }: Props) {
-  const [status, setStatus] = useState<GoEStatus | null>(null)
+  const [status, setStatus] = useState<WallboxStatus | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchStatus = useCallback(async () => {
     try {
       const response = await fetch(`/api/wallboxes/${connection.id}/status`)
       if (!response.ok) throw new Error('Fehler beim Laden des Status')
-      const data = await response.json()
+      const data: WallboxStatus = await response.json()
       setStatus(data)
     } catch (error) {
       console.error('Status Fehler:', error)
@@ -45,67 +68,6 @@ export function WallboxDetailsDialog({ open, onOpenChange, connection }: Props) 
       return () => clearInterval(interval)
     }
   }, [open, fetchStatus])
-
-  const getCarStatus = (car?: number) => {
-    switch (car) {
-      case 1: return 'Bereit, kein Fahrzeug'
-      case 2: return 'Fahrzeug lädt'
-      case 3: return 'Warte auf Fahrzeug'
-      case 4: return 'Ladung beendet'
-      default: return 'Unbekannt'
-    }
-  }
-
-  const getWifiStatus = (wst?: number) => {
-    return wst === 3 ? 'Verbunden' : 'Nicht verbunden'
-  }
-
-  const getWifiSSID = (status: GoEStatus | null) => {
-    return status?.ccw?.ssid || 'Unbekannt'
-  }
-
-  const getWifiIP = (status: GoEStatus | null) => {
-    return status?.ccw?.ip || 'Unbekannt'
-  }
-
-  const getCurrentPower = () => {
-    if (!status?.nrg) return 0
-    return status.nrg[11] / 100
-  }
-
-  const getPhaseInfo = () => {
-    if (!status?.nrg) return []
-
-    const nrgValues = status?.nrg?.slice(0, 16).map(value => value / 100) || []
-    const phaseValue = Number(status.pha || 0)
-    if (Math.floor(phaseValue / 8) === 1 && 
-        parseInt(String(nrgValues[3])) > parseInt(String(nrgValues[0]))) {
-      nrgValues[0] = nrgValues[3]
-      nrgValues[7] = nrgValues[10]
-      nrgValues[12] = nrgValues[15]
-    }
-
-    return [
-      {
-        phase: 'L1',
-        voltage: nrgValues[0],
-        current: nrgValues[4] / 10,
-        power: nrgValues[7] / 10
-      },
-      {
-        phase: 'L2',
-        voltage: nrgValues[1],
-        current: nrgValues[5] / 10,
-        power: nrgValues[8] / 10
-      },
-      {
-        phase: 'L3',
-        voltage: nrgValues[2],
-        current: nrgValues[6] / 10,
-        power: nrgValues[9] / 10
-      }
-    ]
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -128,7 +90,7 @@ export function WallboxDetailsDialog({ open, onOpenChange, connection }: Props) 
                     <Power className="h-5 w-5 mb-2 text-blue-500" />
                     <div className="text-sm font-medium">Status</div>
                     <div className="text-2xl font-bold">
-                      {getCarStatus(status?.car)}
+                      {status?.carState || 'Unbekannt'}
                     </div>
                   </div>
                 </CardContent>
@@ -140,7 +102,7 @@ export function WallboxDetailsDialog({ open, onOpenChange, connection }: Props) 
                     <Zap className="h-5 w-5 mb-2 text-yellow-500" />
                     <div className="text-sm font-medium">Leistung</div>
                     <div className="text-2xl font-bold">
-                      {getCurrentPower().toFixed(2)} kW
+                      {status?.currentPower.toFixed(2)} kW
                     </div>
                   </div>
                 </CardContent>
@@ -152,7 +114,7 @@ export function WallboxDetailsDialog({ open, onOpenChange, connection }: Props) 
                     <Battery className="h-5 w-5 mb-2 text-green-500" />
                     <div className="text-sm font-medium">Geladen</div>
                     <div className="text-2xl font-bold">
-                      {((status?.wh || 0) / 1000).toFixed(2)} kWh
+                      {status?.totalEnergy.toFixed(2)} kWh
                     </div>
                   </div>
                 </CardContent>
@@ -164,7 +126,7 @@ export function WallboxDetailsDialog({ open, onOpenChange, connection }: Props) 
                     <ThermometerSun className="h-5 w-5 mb-2 text-orange-500" />
                     <div className="text-sm font-medium">Temperatur</div>
                     <div className="text-2xl font-bold">
-                      {status?.tma?.[0] || status?.tmp || 0}°C
+                      {status?.temperature}°C
                     </div>
                   </div>
                 </CardContent>
@@ -172,25 +134,18 @@ export function WallboxDetailsDialog({ open, onOpenChange, connection }: Props) 
             </div>
 
             {/* Phasen-Details */}
-            <Card>
-              <CardContent className="pt-6">
-                <h3 className="text-lg font-medium mb-4">Phasen-Details</h3>
-                <div className="grid grid-cols-4 gap-4 text-sm">
-                  <div className="font-medium">Phase</div>
-                  <div className="font-medium">Spannung</div>
-                  <div className="font-medium">Strom</div>
-                  <div className="font-medium">Leistung</div>
-                  {getPhaseInfo().map((phase) => (
-                    <>
-                      <div>{phase.phase}</div>
-                      <div>{phase.voltage.toFixed(0)} V</div>
-                      <div>{phase.current.toFixed(1)} A</div>
-                      <div>{phase.power.toFixed(2)} kW</div>
-                    </>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            {status?.details.power && (
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="text-lg font-medium mb-4">Phasen-Details</h3>
+                  <div className="space-y-6">
+                    <PhaseInfo phase={status.details.power.phases.l1} label="Phase L1" />
+                    <PhaseInfo phase={status.details.power.phases.l2} label="Phase L2" />
+                    <PhaseInfo phase={status.details.power.phases.l3} label="Phase L3" />
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Weitere Informationen */}
             <Card>
@@ -198,16 +153,11 @@ export function WallboxDetailsDialog({ open, onOpenChange, connection }: Props) 
                 <h3 className="text-lg font-medium mb-4">Weitere Informationen</h3>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="font-medium">Firmware:</span> {status?.fwv}
+                    <span className="font-medium">Firmware:</span> {status?.firmware}
                   </div>
                   <div>
-                    <span className="font-medium">WLAN Status:</span> {getWifiStatus(status?.wst)}
-                  </div>
-                  <div>
-                    <span className="font-medium">WLAN SSID:</span> {getWifiSSID(status)}
-                  </div>
-                  <div>
-                    <span className="font-medium">IP-Adresse:</span> {getWifiIP(status)}
+                    <span className="font-medium">WLAN Status:</span>{' '}
+                    {status?.wifiConnected ? 'Verbunden' : 'Nicht verbunden'}
                   </div>
                   <div>
                     <span className="font-medium">Letzte Aktualisierung:</span>{' '}

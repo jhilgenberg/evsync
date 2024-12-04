@@ -11,6 +11,7 @@ export type GoEStatus = {
   fwv: string           // Firmware Version
   tma?: number[]        // Temperaturmesswerte
   wst: number           // WiFi Status
+  dll?: string          // Data Link für Ladevorgänge
   ccw?: {
     ssid: string
     ip: string

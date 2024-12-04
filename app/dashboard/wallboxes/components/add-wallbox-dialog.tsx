@@ -56,7 +56,7 @@ export function AddWallboxDialog({ open, onOpenChange, onAdd }: Props) {
       onOpenChange(open)
       if (!open) resetForm()
     }}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="max-w-2xl sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>
             {step === 'provider' ? 'Wallbox-Hersteller auswählen' : 'Wallbox konfigurieren'}

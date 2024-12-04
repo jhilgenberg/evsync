@@ -1,3 +1,42 @@
+export enum WallboxCarState {
+  UNKNOWN = 'UNKNOWN',
+  READY = 'READY',
+  CHARGING = 'CHARGING',
+  WAITING = 'WAITING',
+  FINISHED = 'FINISHED'
+}
+
+export type PhaseInfo = {
+  voltage: number        // Spannung in V
+  current: number        // Strom in A
+  power: number         // Leistung in kW
+  powerFactor: number   // Leistungsfaktor in %
+}
+
+export type DetailedPowerInfo = {
+  totalPower: number    // Gesamtleistung in kW
+  phases: {
+    l1: PhaseInfo
+    l2: PhaseInfo
+    l3: PhaseInfo
+    n?: PhaseInfo      // Optional für Neutral
+  }
+}
+
+export type WallboxStatus = {
+  isOnline: boolean
+  carState: WallboxCarState
+  currentPower: number     // in kW
+  totalEnergy: number      // in kWh
+  temperature: number      // in °C
+  firmware: string
+  wifiConnected: boolean
+  details: {
+    power: DetailedPowerInfo
+    rawData?: unknown     // Für debugging/entwickler
+  }
+}
+
 export type WallboxProvider = {
   id: string
   name: string

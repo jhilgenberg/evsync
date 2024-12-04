@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { WallboxConnection } from '@/types/wallbox'
-import { GoEStatus } from '@/types/go-e'
+import { WallboxConnection, WallboxStatus, WallboxCarState } from '@/types/wallbox'
 import { Battery, Plug, Zap, RefreshCw, ThermometerSun } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { WallboxDetailsDialog } from './wallbox-details-dialog'
@@ -15,7 +14,7 @@ type Props = {
 }
 
 export function WallboxCard({ connection, providerName, providerLogo }: Props) {
-  const [status, setStatus] = useState<GoEStatus | null>(null)
+  const [status, setStatus] = useState<WallboxStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [showDetails, setShowDetails] = useState(false)
@@ -25,7 +24,7 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
       setIsRefreshing(true)
       const response = await fetch(`/api/wallboxes/${connection.id}/status`)
       if (!response.ok) throw new Error('Fehler beim Laden des Status')
-      const data = await response.json()
+      const data: WallboxStatus = await response.json()
       setStatus(data)
     } catch (error) {
       console.error('Status Fehler:', error)
@@ -41,24 +40,14 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
     return () => clearInterval(interval)
   }, [fetchStatus])
 
-  const getCarStatus = () => {
-    if (!status) return 'Unbekannt'
-    switch (status.car) {
-      case 1: return 'Bereit, kein Fahrzeug'
-      case 2: return 'Fahrzeug lädt'
-      case 3: return 'Warte auf Fahrzeug'
-      case 4: return 'Ladung beendet'
+  const getCarStatusText = (carState: WallboxCarState) => {
+    switch (carState) {
+      case WallboxCarState.READY: return 'Bereit, kein Fahrzeug'
+      case WallboxCarState.CHARGING: return 'Fahrzeug lädt'
+      case WallboxCarState.WAITING: return 'Warte auf Fahrzeug'
+      case WallboxCarState.FINISHED: return 'Ladung beendet'
       default: return 'Unbekannt'
     }
-  }
-
-  const getCurrentPower = () => {
-    if (!status?.nrg) return 0
-    return status.nrg[11] / 100
-  }
-
-  const getWifiStatus = () => {
-    return status?.wst === 3 ? 'Verbunden' : 'Nicht verbunden'
   }
 
   return (
@@ -88,7 +77,7 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
                 <span className="sr-only">Aktualisieren</span>
               </Button>
             </div>
-            {status?.err === 0 ? (
+            {status?.isOnline ? (
               <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
                 Online
               </span>
@@ -100,7 +89,8 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
           </div>
           <CardTitle>{connection.name}</CardTitle>
           <CardDescription>
-            {getWifiStatus()} • Firmware: {status?.fwv || 'Unbekannt'}
+            {status?.wifiConnected ? 'Verbunden' : 'Nicht verbunden'} • 
+            Firmware: {status?.firmware || 'Unbekannt'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -116,7 +106,9 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
                     <Plug className="mr-1 h-4 w-4" />
                     Status
                   </div>
-                  <p className="font-medium">{getCarStatus()}</p>
+                  <p className="font-medium">
+                    {status ? getCarStatusText(status.carState) : 'Unbekannt'}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center text-sm text-muted-foreground">
@@ -124,7 +116,7 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
                     Leistung
                   </div>
                   <p className="font-medium">
-                    {getCurrentPower().toFixed(2)} kW
+                    {status?.currentPower.toFixed(2)} kW
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -133,7 +125,7 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
                     Geladen
                   </div>
                   <p className="font-medium">
-                    {((status?.wh || 0) / 1000).toFixed(2)} kWh
+                    {status?.totalEnergy.toFixed(2)} kWh
                   </p>
                 </div>
                 <div className="space-y-1">
@@ -142,7 +134,7 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
                     Temperatur
                   </div>
                   <p className="font-medium">
-                    {status?.tma?.[0] || status?.tmp || 0}°C
+                    {status?.temperature}°C
                   </p>
                 </div>
               </div>
