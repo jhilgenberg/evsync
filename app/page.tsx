@@ -126,15 +126,10 @@ export default function LandingPage() {
           Die zentrale Plattform für die Verwaltung Ihrer Wallboxen. 
           Überwachen, analysieren und optimieren Sie Ihr Ladeverhalten.
         </p>
-        <div className="mt-8 flex flex-col sm:flex-row gap-3 w-full max-w-xs sm:max-w-none">
-          <Link href="/auth" className="w-full sm:w-auto">
+        <div className="mt-8 flex justify-center w-full px-4">
+          <Link href="/auth" className="w-full sm:w-auto max-w-xs">
             <Button size="lg" className="w-full bg-gradient-to-r from-blue-600 to-blue-500">
               Jetzt starten
-            </Button>
-          </Link>
-          <Link href="/auth" className="w-full sm:w-auto">
-            <Button size="lg" variant="outline" className="w-full">
-              Demo ansehen
             </Button>
           </Link>
         </div>
