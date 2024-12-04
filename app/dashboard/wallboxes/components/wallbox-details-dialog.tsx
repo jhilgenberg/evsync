@@ -2,7 +2,7 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { WallboxConnection, type PhaseInfo } from '@/types/wallbox'
+import { WallboxConnection } from '@/types/wallbox'
 import { format } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
@@ -36,36 +36,6 @@ type Props = {
   onOpenChange: (open: boolean) => void
   connection: WallboxConnection
   status: WallboxStatus | undefined
-}
-
-function PhaseInfo({ phase, label }: { phase: PhaseInfo; label: string }) {
-  if (!phase) return null
-
-  return (
-    <div className="space-y-1">
-      <h4 className="font-medium">{label}</h4>
-      <div className="grid grid-cols-2 gap-2 text-sm">
-        <div>
-          <span className="text-muted-foreground">Spannung:</span>
-          <span className="ml-2">{phase.voltage.toFixed(1)} V</span>
-        </div>
-        <div>
-          <span className="text-muted-foreground">Strom:</span>
-          <span className="ml-2">{phase.current.toFixed(1)} A</span>
-        </div>
-        <div>
-          <span className="text-muted-foreground">Leistung:</span>
-          <span className="ml-2">{phase.power.toFixed(2)} kW</span>
-        </div>
-        {phase.powerFactor > 0 && (
-          <div>
-            <span className="text-muted-foreground">Leistungsfaktor:</span>
-            <span className="ml-2">{phase.powerFactor}%</span>
-          </div>
-        )}
-      </div>
-    </div>
-  )
 }
 
 export function WallboxDetailsDialog({ 

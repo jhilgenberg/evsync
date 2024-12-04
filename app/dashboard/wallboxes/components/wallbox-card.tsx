@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { WallboxConnection, WallboxStatus } from '@/types/wallbox'
 import { WallboxDetailsDialog } from './wallbox-details-dialog'
-import { Zap, Battery, RefreshCw } from 'lucide-react'
+import { Zap, Battery } from 'lucide-react'
 import Image from 'next/image'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
@@ -33,6 +33,7 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
         title: "Fehler",
         description: "Status konnte nicht geladen werden",
       })
+      console.error(error)
     }
   }, [connection.id, toast])
 
