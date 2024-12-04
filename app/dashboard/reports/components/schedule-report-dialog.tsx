@@ -39,6 +39,7 @@ export function ScheduleReportDialog({ open, onOpenChange }: Props) {
         title: "Fehler",
         description: "Berichtsplan konnte nicht gespeichert werden",
       })
+      console.error(error)
     }
   }
 

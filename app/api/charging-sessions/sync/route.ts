@@ -51,21 +51,6 @@ export async function POST() {
       try {
         const service = createWallboxService(connection)
         
-        // Hole das Datum der letzten Synchronisation
-        const { data: lastSession } = await supabase
-          .from('charging_sessions')
-          .select('end_time')
-          .eq('wallbox_id', connection.id)
-          .order('end_time', { ascending: false })
-          .limit(1)
-          .single()
-
-        // Setze den Zeitraum für die Abfrage
-        //const to = new Date()
-        //const from = lastSession?.end_time 
-          //? new Date(lastSession.end_time)
-          //: new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000) // 30 Tage zurück
-
         // Hole die Ladevorgänge
         const sessions = await service.getChargingSessions()
 

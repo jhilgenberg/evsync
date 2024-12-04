@@ -50,13 +50,8 @@ import { de } from 'date-fns/locale'
 import { formatInTimeZone } from 'date-fns-tz'
 import { cn } from '@/lib/utils'
 import { ScheduleReportDialog } from './components/schedule-report-dialog'
-import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-interface DidDrawPageData {
-  pageNumber: number;
-  pageCount: number;
-}
+import { WallboxConnection } from '@/types/wallbox'
 
 type ChargingSession = {
   id: string
@@ -127,37 +122,7 @@ export default function ReportsPage() {
     loadSessions()
   }, [loadSessions])
 
-  const totalEnergy = sessions.reduce((sum, session) => sum + session.energy_kwh, 0)
-  const totalCost = sessions.reduce((sum, session) => sum + session.cost, 0)
-
-  // Prüfe und starte Sync wenn nötig
-  useEffect(() => {
-    const checkAndSync = async () => {
-      try {
-        // Hole den letzten Sync-Zeitpunkt aller Wallboxen
-        const response = await fetch('/api/wallboxes')
-        if (!response.ok) throw new Error('Laden der Wallboxen fehlgeschlagen')
-        const wallboxes = await response.json()
-
-        // Prüfe ob ein Sync nötig ist
-        const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000)
-        const needsSync = wallboxes.some((wallbox: any) => {
-          const lastSync = wallbox.last_sync ? new Date(wallbox.last_sync) : new Date(0)
-          return lastSync < fifteenMinutesAgo
-        })
-
-        if (needsSync && !isSyncing) {
-          await handleSync()
-        }
-      } catch (error) {
-        console.error('Auto-Sync Check fehlgeschlagen:', error)
-      }
-    }
-
-    checkAndSync()
-  }, []) // Nur beim ersten Laden der Seite
-
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
     try {
       setIsSyncing(true)
       const response = await fetch('/api/charging-sessions/sync', {
@@ -185,7 +150,34 @@ export default function ReportsPage() {
     } finally {
       setIsSyncing(false)
     }
-  }
+  }, [loadSessions, toast])
+
+  // Prüfe und starte Sync wenn nötig
+  useEffect(() => {
+    const checkAndSync = async () => {
+      try {
+        // Hole den letzten Sync-Zeitpunkt aller Wallboxen
+        const response = await fetch('/api/wallboxes')
+        if (!response.ok) throw new Error('Laden der Wallboxen fehlgeschlagen')
+        const wallboxes = await response.json()
+
+        // Prüfe ob ein Sync nötig ist
+        const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000)
+        const needsSync = wallboxes.some((wallbox: WallboxConnection) => {
+          const lastSync = wallbox.last_sync ? new Date(wallbox.last_sync) : new Date(0)
+          return lastSync < fifteenMinutesAgo
+        })
+
+        if (needsSync && !isSyncing) {
+          await handleSync()
+        }
+      } catch (error) {
+        console.error('Auto-Sync Check fehlgeschlagen:', error)
+      }
+    }
+
+    checkAndSync()
+  }, [handleSync, isSyncing])
 
   // Sortiere und filtere die Sessions
   const sortedSessions = useMemo(() => {
