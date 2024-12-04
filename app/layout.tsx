@@ -10,8 +10,6 @@ import { cookies } from 'next/headers'
 import { Suspense } from 'react'
 import { LoadingLogo } from '@/components/ui/loading-logo'
 
-const gradientTextStyle = "bg-gradient-to-r from-blue-600 via-blue-500 to-violet-500 bg-clip-text text-transparent bg-[size:200%] animate-gradient"
-
 export const metadata: Metadata = {
   title: "EVSync",
   description: "Verwalte deine Wallbox",
