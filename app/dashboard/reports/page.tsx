@@ -695,7 +695,7 @@ export default function ReportsPage() {
                         </div>
                         {payload.map((entry) => (
                           <div key={entry.dataKey} className="text-sm font-medium text-popover-foreground">
-                            {entry.name}: {Number(entry.value).toFixed(2)} {entry.dataKey === 'energy' ? 'kWh' : '€'}
+                            {entry.name}: {entry.value != null ? Number(entry.value).toFixed(2) : '0.00'} {entry.dataKey === 'energy' ? 'kWh' : '€'}
                           </div>
                         ))}
                       </div>
