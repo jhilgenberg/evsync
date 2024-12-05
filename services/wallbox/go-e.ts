@@ -81,8 +81,8 @@ export class GoEService {
 
     const getPhaseInfo = (index: number): PhaseInfo => ({
       voltage: useNeutralVoltage && index === 0 ? status.nrg[3] : status.nrg[index],
-      current: status.nrg[index + 4] / 10,
-      power: status.nrg[index + 7] / 10,
+      current: status.nrg[index + 4] / 1000,
+      power: status.nrg[index + 7] / 1000,
       powerFactor: useNeutralVoltage && index === 0 ? 
         status.nrg[15] : status.nrg[index + 12]
     })
@@ -90,7 +90,7 @@ export class GoEService {
     return {
       isOnline: status.err === 0,
       carState: this.mapCarState(status.car),
-      currentPower: status.nrg ? status.nrg[11] / 10 : 0,
+      currentPower: status.nrg ? status.nrg[11] / 1000 : 0,
       totalEnergy: (status.wh || 0) / 1000,
       temperature: Array.isArray(status.tma) ? status.tma[0] : 
                   (Array.isArray(status.tmp) ? status.tmp[0] : 0),
@@ -98,7 +98,7 @@ export class GoEService {
       wifiConnected: status.wst === 3,
       details: {
         power: {
-          totalPower: status.nrg[11] / 100,
+          totalPower: status.nrg[11] / 1000,
           phases: {
             l1: getPhaseInfo(0),
             l2: getPhaseInfo(1),
