@@ -88,10 +88,6 @@ const PAGE_SIZES = [5, 10, 20, 50, 100]
 // Konstante für "keine Auswahl"
 const NO_SELECTION = 'none';
 
-type CustomTooltipProps = TooltipProps<ValueType, NameType> & {
-  type: 'energy' | 'cost';
-};
-
 export default function ReportsPage() {
   const [sessions, setSessions] = useState<ChargingSession[]>([])
   const [cars, setCars] = useState<Car[]>([])
