@@ -15,11 +15,11 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Download,
   FileText,
   TrendingUp,
   TrendingDown,
-  Settings
+  Settings,
+  ChartArea
 } from 'lucide-react'
 import {
   Table,
@@ -32,19 +32,18 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  LineChart,
   Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
   Bar,
+  ComposedChart,
+  Legend,
 } from 'recharts'
 import { format, differenceInMinutes, startOfDay, parseISO, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { de } from 'date-fns/locale'
@@ -62,6 +61,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { TooltipProps } from 'recharts';
+import { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 
 type ChargingSession = {
   id: string
@@ -87,23 +88,8 @@ const PAGE_SIZES = [5, 10, 20, 50, 100]
 // Konstante für "keine Auswahl"
 const NO_SELECTION = 'none';
 
-// Definiere custom Tooltip Styles
-const CustomTooltip = ({ active, payload, label, type }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="rounded-lg border bg-popover p-2 shadow-sm">
-        <div className="text-sm text-popover-foreground">
-          {format(new Date(label), 'PPP', { locale: de })}
-        </div>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="text-sm font-medium text-popover-foreground">
-            {entry.name}: {entry.value.toFixed(2)} {type === 'energy' ? 'kWh' : '€'}
-          </div>
-        ))}
-      </div>
-    );
-  }
-  return null;
+type CustomTooltipProps = TooltipProps<ValueType, NameType> & {
+  type: 'energy' | 'cost';
 };
 
 export default function ReportsPage() {
@@ -676,48 +662,17 @@ export default function ReportsPage() {
       </div>
 
       {/* Diagramme */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="w-full">
         <Card>
-          <CardHeader>
-            <CardTitle>Energieverbrauch</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <ChartArea className="h-5 w-5 text-muted-foreground" />
+              <CardTitle>Energie & Kosten</CardTitle>
+            </div>
           </CardHeader>
-          <CardContent className="h-[400px]">
+          <CardContent className="h-[500px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis 
-                  dataKey="date" 
-                  tickFormatter={(date) => format(new Date(date), 'd. MMM', { locale: de })}
-                  className="text-muted-foreground text-xs"
-                />
-                <YAxis 
-                  yAxisId="left"
-                  tickFormatter={(value) => `${value.toFixed(1)} kWh`}
-                  className="text-muted-foreground text-xs"
-                />
-                <Tooltip
-                  content={({ active, payload, label }) => (
-                    <CustomTooltip active={active} payload={payload} label={label} type="energy" />
-                  )}
-                />
-                <Bar 
-                  dataKey="energy" 
-                  fill="#0071e3" 
-                  yAxisId="left"
-                  name="Energie"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Kostenentwicklung</CardTitle>
-          </CardHeader>
-          <CardContent className="h-[400px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={dailyData}>
+              <ComposedChart data={dailyData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis 
                   dataKey="date"
@@ -726,23 +681,51 @@ export default function ReportsPage() {
                 />
                 <YAxis 
                   yAxisId="left"
+                  tickFormatter={(value) => `${value.toFixed(1)} kWh`}
+                  className="text-muted-foreground text-xs"
+                />
+                <YAxis 
+                  yAxisId="right"
+                  orientation="right"
                   tickFormatter={(value) => `${value.toFixed(2)} €`}
                   className="text-muted-foreground text-xs"
                 />
                 <Tooltip
-                  content={({ active, payload, label }) => (
-                    <CustomTooltip active={active} payload={payload} label={label} type="cost" />
-                  )}
+                  content={({ active, payload, label }) => {
+                    if (!active || !payload || !payload.length) return null;
+                    
+                    return (
+                      <div className="rounded-lg border bg-popover p-2 shadow-sm">
+                        <div className="text-sm text-popover-foreground">
+                          {format(parseISO(label), 'PPP', { locale: de })}
+                        </div>
+                        {payload.map((entry) => (
+                          <div key={entry.dataKey} className="text-sm font-medium text-popover-foreground">
+                            {entry.name}: {Number(entry.value).toFixed(2)} {entry.dataKey === 'energy' ? 'kWh' : '€'}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }}
+                />
+                <Legend />
+                <Bar 
+                  dataKey="energy" 
+                  fill="#0071e3" 
+                  yAxisId="left"
+                  name="Energie"
+                  opacity={0.8}
                 />
                 <Line 
                   type="monotone" 
                   dataKey="cost" 
-                  stroke="#0071e3" 
-                  yAxisId="left"
+                  stroke="#10b981" 
+                  yAxisId="right"
                   name="Kosten"
                   dot={false}
+                  strokeWidth={2}
                 />
-              </LineChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
