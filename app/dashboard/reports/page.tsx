@@ -52,6 +52,14 @@ import { cn } from '@/lib/utils'
 import { ScheduleReportDialog } from './components/schedule-report-dialog'
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { WallboxConnection, Car } from '@/types/wallbox'
+import { AssignCarDialog } from './components/assign-car-dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 type ChargingSession = {
   id: string
@@ -62,7 +70,7 @@ type ChargingSession = {
   cost: number
   tariff_name: string
   energy_rate: number
-  car_id: string
+  car_id: string | null
 }
 
 type DailyData = {
@@ -74,10 +82,14 @@ type DailyData = {
 
 const PAGE_SIZES = [5, 10, 20, 50, 100]
 
+// Konstante für "keine Auswahl"
+const NO_SELECTION = 'none';
+
 export default function ReportsPage() {
   const [sessions, setSessions] = useState<ChargingSession[]>([])
   const [cars, setCars] = useState<Car[]>([])
   const [selectedCar, setSelectedCar] = useState<string | undefined>()
+  const [selectedSessions, setSelectedSessions] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [dateFrom, setDateFrom] = useState(() => {
     const date = new Date()
@@ -92,11 +104,12 @@ export default function ReportsPage() {
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false)
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'))
   const [isCustomRange, setIsCustomRange] = useState(false)
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false)
 
   const loadSessions = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/charging-sessions?car_id=${selectedCar || ''}`)
+      const response = await fetch(`/api/charging-sessions${selectedCar && selectedCar !== NO_SELECTION ? `?car_id=${selectedCar}` : ''}`)
       if (!response.ok) throw new Error('Laden fehlgeschlagen')
       const data = await response.json()
       setSessions(data)
@@ -229,13 +242,18 @@ export default function ReportsPage() {
     }, []).sort((a, b) => a.date.localeCompare(b.date));
   }, [sortedSessions])
 
-  // Berechne die Gesamtanzahl der Seiten
+  // Berechne die Gesamtanzahl der Seiten basierend auf den gefilterten Sessions
   const totalPages = Math.ceil(sortedSessions.length / pageSize)
 
   // Hole die Sessions für die aktuelle Seite
   const currentSessions = sortedSessions.slice(
     currentPage * pageSize,
     (currentPage + 1) * pageSize
+  )
+
+  // Prüfe ob alle sichtbaren Sessions ausgewählt sind
+  const areAllVisibleSelected = currentSessions.every(session => 
+    selectedSessions.has(session.id)
   )
 
   // Navigations-Funktionen
@@ -368,11 +386,100 @@ export default function ReportsPage() {
     )
   }
 
+  const handleAssignCar = async (sessionIds: string[], carId: string) => {
+    // Optimistisches Update der UI
+    const updatedSessions = sessions.map(session => {
+      if (sessionIds.includes(session.id)) {
+        return {
+          ...session,
+          car_id: carId === NO_SELECTION ? null : carId
+        };
+      }
+      return session;
+    }) as ChargingSession[];
+    
+    // Sofort UI aktualisieren
+    setSessions(updatedSessions);
+    
+    // Optional: Auswahl zurücksetzen
+    setSelectedSessions(new Set());
+    
+    try {
+      const response = await fetch('/api/charging-sessions/bulk-assign', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          session_ids: sessionIds, 
+          car_id: carId === NO_SELECTION ? null : carId
+        }),
+      });
+
+      if (!response.ok) {
+        // Bei Fehler zurück zu original Zustand
+        setSessions(sessions);
+        const data = await response.json();
+        throw new Error(data.error);
+      }
+
+      // Aktualisiere die UI mit den Daten vom Server
+      const data = await response.json();
+      
+      // Aktualisiere nur die geänderten Sessions
+      setSessions(prev => prev.map(session => {
+        const updatedSession = data.find((d: ChargingSession) => d.id === session.id);
+        return updatedSession || session;
+      }));
+
+      toast({
+        title: "Erfolg",
+        description: "Auto wurde zugewiesen",
+      });
+    } catch (error) {
+      // UI-State wurde bereits zurückgesetzt
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Auto konnte nicht zugewiesen werden",
+      });
+      console.error(error);
+    }
+  };
+
+  const toggleSessionSelection = (sessionId: string) => {
+    setSelectedSessions((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(sessionId)) {
+        newSet.delete(sessionId);
+      } else {
+        newSet.add(sessionId);
+      }
+      return newSet;
+    });
+  };
+
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
       <div className="flex justify-between items-center sm:flex-row flex-col">
         <h1 className="text-3xl font-medium">Ladeberichte</h1>
         <div className="flex flex-wrap gap-2 sm:pt-0 pt-4">
+          <Select
+            value={selectedCar || NO_SELECTION}
+            onValueChange={(value) => setSelectedCar(value === NO_SELECTION ? undefined : value)}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Alle Autos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_SELECTION}>Alle Autos</SelectItem>
+              {cars.map((car) => (
+                <SelectItem key={car.id} value={car.id}>
+                  {car.make} {car.model}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button 
             variant="outline"
             onClick={() => setScheduleDialogOpen(true)}
@@ -612,8 +719,16 @@ export default function ReportsPage() {
 
       {/* Tabelle */}
       <Card className="overflow-hidden">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Ladevorgänge</CardTitle>
+          {selectedSessions.size > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => setIsAssignDialogOpen(true)}
+            >
+              Ausgewählte zuweisen
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -626,10 +741,24 @@ export default function ReportsPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
+                      <TableHead>
+                        <input
+                          type="checkbox"
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedSessions(new Set(currentSessions.map((s) => s.id)));
+                            } else {
+                              setSelectedSessions(new Set());
+                            }
+                          }}
+                          checked={areAllVisibleSelected && currentSessions.length > 0}
+                        />
+                      </TableHead>
                       <TableHead>Datum</TableHead>
                       <TableHead>Dauer</TableHead>
                       <TableHead>Energie</TableHead>
                       <TableHead>Tarif</TableHead>
+                      <TableHead>Auto</TableHead>
                       <TableHead className="text-right">Kosten</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -643,6 +772,13 @@ export default function ReportsPage() {
 
                       return (
                         <TableRow key={session.id} className="hover:bg-muted/50">
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={selectedSessions.has(session.id)}
+                              onChange={() => toggleSessionSelection(session.id)}
+                            />
+                          </TableCell>
                           <TableCell className="font-medium">
                             {formatInTimeZone(startDate, 'Europe/Berlin', 'Pp', { locale: de })}
                           </TableCell>
@@ -662,6 +798,24 @@ export default function ReportsPage() {
                                 {session.energy_rate.toFixed(2)} ct/kWh
                               </span>
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            <Select
+                              value={session.car_id || NO_SELECTION}
+                              onValueChange={(value) => handleAssignCar([session.id], value === NO_SELECTION ? '' : value)}
+                            >
+                              <SelectTrigger className="w-[200px]">
+                                <SelectValue placeholder="Kein Auto" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={NO_SELECTION}>Kein Auto</SelectItem>
+                                {cars.map((car) => (
+                                  <SelectItem key={car.id} value={car.id}>
+                                    {car.make} {car.model}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             {session.cost.toFixed(2)} €
@@ -738,6 +892,15 @@ export default function ReportsPage() {
       <ScheduleReportDialog 
         open={scheduleDialogOpen} 
         onOpenChange={setScheduleDialogOpen}
+      />
+
+      <AssignCarDialog
+        open={isAssignDialogOpen}
+        onOpenChange={setIsAssignDialogOpen}
+        cars={cars}
+        onAssign={async (carId) => {
+          await handleAssignCar(Array.from(selectedSessions), carId);
+        }}
       />
     </div>
   )

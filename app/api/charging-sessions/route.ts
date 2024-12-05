@@ -15,24 +15,16 @@ export async function GET(request: Request) {
       )
     }
 
-    // Hole die Filter-Parameter aus der URL
     const { searchParams } = new URL(request.url)
-    const from = searchParams.get('from')
-    const to = searchParams.get('to')
+    const carId = searchParams.get('car_id')
 
-    // Erstelle die Basis-Query
     let query = supabase
       .from('charging_sessions')
       .select('*')
       .eq('user_id', session.user.id)
-      .order('start_time', { ascending: false })
 
-    // Füge Filter hinzu, wenn vorhanden
-    if (from) {
-      query = query.gte('start_time', `${from}T00:00:00`)
-    }
-    if (to) {
-      query = query.lte('start_time', `${to}T23:59:59`)
+    if (carId) {
+      query = query.eq('car_id', carId)
     }
 
     const { data, error } = await query
@@ -40,11 +32,8 @@ export async function GET(request: Request) {
     if (error) throw error
 
     return NextResponse.json(data)
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten'
-    return NextResponse.json(
-      { error: errorMessage },
-      { status: 500 }
-    )
+  } catch (error) {
+    console.error('Fehler beim Abrufen der Ladesitzungen:', error)
+    return NextResponse.json({ error: 'Fehler beim Abrufen der Ladesitzungen' }, { status: 500 })
   }
 } 

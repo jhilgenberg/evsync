@@ -56,31 +56,6 @@ export default function SettingsPage() {
     loadCars()
   }, [loadTariffs, loadCars])
 
-  const handleSaveTariff = async (formData: TariffFormData) => {
-    try {
-      const response = await fetch('/api/tariffs', {
-        method: selectedTariff ? 'PUT' : 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...formData,
-          id: selectedTariff?.id,
-        }),
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error)
-      }
-
-      await loadTariffs()
-      setSelectedTariff(undefined)
-    } catch (error: unknown) {
-      throw error
-    }
-  }
-
   const handleSaveCar = async (carData: Car) => {
     try {
       const response = await fetch('/api/cars', {
@@ -101,6 +76,31 @@ export default function SettingsPage() {
       console.error('Fehler beim Speichern des Autos:', error)
     }
   }
+
+  const handleSaveTariff = async (formData: TariffFormData) => {
+    try {
+      const response = await fetch('/api/tariffs', {
+        method: selectedTariff ? 'PUT' : 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          ...formData,
+          id: selectedTariff?.id,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error);
+      }
+
+      await loadTariffs();
+      setSelectedTariff(undefined);
+    } catch (error: unknown) {
+      throw error;
+    }
+  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
