@@ -87,7 +87,7 @@ export class GoEService {
     return {
       isOnline: status.err === 0,
       carState: this.mapCarState(status.car),
-      currentPower: status.nrg ? status.nrg[11] / 100 : 0,
+      currentPower: status.nrg ? status.nrg[11] / 10 : 0,
       totalEnergy: (status.wh || 0) / 1000,
       temperature: Array.isArray(status.tma) ? status.tma[0] : 
                   (Array.isArray(status.tmp) ? status.tmp[0] : 0),
