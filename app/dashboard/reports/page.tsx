@@ -18,7 +18,8 @@ import {
   Download,
   FileText,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Settings
 } from 'lucide-react'
 import {
   Table,
@@ -60,6 +61,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Separator } from "@/components/ui/separator"
 
 type ChargingSession = {
   id: string
@@ -84,6 +86,25 @@ const PAGE_SIZES = [5, 10, 20, 50, 100]
 
 // Konstante für "keine Auswahl"
 const NO_SELECTION = 'none';
+
+// Definiere custom Tooltip Styles
+const CustomTooltip = ({ active, payload, label, type }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="rounded-lg border bg-popover p-2 shadow-sm">
+        <div className="text-sm text-popover-foreground">
+          {format(new Date(label), 'PPP', { locale: de })}
+        </div>
+        {payload.map((entry: any, index: number) => (
+          <div key={index} className="text-sm font-medium text-popover-foreground">
+            {entry.name}: {entry.value.toFixed(2)} {type === 'energy' ? 'kWh' : '€'}
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function ReportsPage() {
   const [sessions, setSessions] = useState<ChargingSession[]>([])
@@ -462,9 +483,50 @@ export default function ReportsPage() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
-      <div className="flex justify-between items-center sm:flex-row flex-col">
-        <h1 className="text-3xl font-medium">Ladeberichte</h1>
-        <div className="flex flex-wrap gap-2 sm:pt-0 pt-4">
+      {/* Hauptnavigation */}
+      <div className="flex justify-between items-center flex-wrap gap-4">
+        <div className="flex items-center space-x-2">
+          <h1 className="text-3xl font-medium">Ladeberichte</h1>
+          <div className="flex items-center space-x-2 ml-4">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const date = new Date(selectedMonth)
+                setSelectedMonth(format(subMonths(date, 1), 'yyyy-MM'))
+              }}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              className="h-9 rounded-md border border-input bg-background px-3 py-1"
+            >
+              {Array.from({ length: 12 }, (_, i) => {
+                const date = subMonths(new Date(), i)
+                const value = format(date, 'yyyy-MM')
+                return (
+                  <option key={value} value={value}>
+                    {format(date, 'MMMM yyyy', { locale: de })}
+                  </option>
+                )
+              })}
+            </select>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const today = new Date()
+                setSelectedMonth(format(today, 'yyyy-MM'))
+              }}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
           <Select
             value={selectedCar || NO_SELECTION}
             onValueChange={(value) => setSelectedCar(value === NO_SELECTION ? undefined : value)}
@@ -481,129 +543,91 @@ export default function ReportsPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button 
-            variant="outline"
-            onClick={() => setScheduleDialogOpen(true)}
-            className="w-full sm:w-auto"
-          >
-            <Calendar className="mr-2 h-4 w-4" />
-            Automatisieren
-          </Button>
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="w-full sm:w-auto">
-                <Download className="mr-2 h-4 w-4" />
-                Export
+              <Button variant="outline">
+                <Settings className="mr-2 h-4 w-4" />
+                Filter & Export
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={generatePDF}>
-                <FileText className="mr-2 h-4 w-4" />
-                Als PDF speichern
-              </DropdownMenuItem>
+            <DropdownMenuContent align="end" className="w-[300px] p-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Zeitraum</Label>
+                  <Tabs defaultValue="month" onValueChange={(value) => setIsCustomRange(value === 'custom')}>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="month">Monat</TabsTrigger>
+                      <TabsTrigger value="custom">Benutzerdefiniert</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                  
+                  {isCustomRange && (
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div className="space-y-1">
+                        <Label htmlFor="from">Von</Label>
+                        <Input
+                          type="date"
+                          id="from"
+                          value={dateFrom}
+                          onChange={(e) => setDateFrom(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label htmlFor="to">Bis</Label>
+                        <Input
+                          type="date"
+                          id="to"
+                          value={dateTo}
+                          onChange={(e) => setDateTo(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                <div className="space-y-2">
+                  <Label>Export</Label>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={generatePDF}
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Als PDF exportieren
+                  </Button>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Automatisierung</Label>
+                  <Button 
+                    variant="outline" 
+                    className="w-full"
+                    onClick={() => setScheduleDialogOpen(true)}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    Bericht planen
+                  </Button>
+                </div>
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
 
           <Button 
             onClick={handleSync} 
             disabled={isSyncing}
-            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
+            className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600"
           >
             <RefreshCw className={cn(
-              "mr-0 sm:mr-2 h-4 w-4",
+              "mr-2 h-4 w-4",
               isSyncing && "animate-spin"
             )} />
-            <span className="sm:inline">Synchronisieren</span>
+            Sync
           </Button>
         </div>
       </div>
-
-      {/* Filter-Bereich */}
-      <Card>
-        <CardContent className="pt-6">
-          <Tabs defaultValue="month" onValueChange={(value) => setIsCustomRange(value === 'custom')}>
-            <div className="flex flex-col space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="month">Monatsauswählen</TabsTrigger>
-                <TabsTrigger value="custom">Benutzerdefiniert</TabsTrigger>
-              </TabsList>
-
-              <div className="space-y-4">
-                {isCustomRange ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="from">Von</Label>
-                      <Input
-                        type="date"
-                        id="from"
-                        value={dateFrom}
-                        onChange={(e) => setDateFrom(e.target.value)}
-                        className="h-9"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="to">Bis</Label>
-                      <Input
-                        type="date"
-                        id="to"
-                        value={dateTo}
-                        onChange={(e) => setDateTo(e.target.value)}
-                        className="h-9"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="month">Monat auswählen</Label>
-                        <Input
-                          type="month"
-                          id="month"
-                          value={selectedMonth}
-                          onChange={(e) => setSelectedMonth(e.target.value)}
-                          className="h-9"
-                        />
-                      </div>
-                      <div className="flex items-end space-x-2">
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => {
-                            const date = new Date(selectedMonth)
-                            setSelectedMonth(format(subMonths(date, 1), 'yyyy-MM'))
-                          }}
-                        >
-                          <ChevronLeft className="h-4 w-4 mr-2" />
-                          Vorheriger
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => {
-                            const today = new Date()
-                            setSelectedMonth(format(today, 'yyyy-MM'))
-                          }}
-                        >
-                          Aktuell
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-                  <Calendar className="h-4 w-4 mr-2" />
-                  <span>
-                    Zeitraum: {format(parseISO(dateFrom), 'PPP', { locale: de })} bis{' '}
-                    {format(parseISO(dateTo), 'PPP', { locale: de })}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Tabs>
-        </CardContent>
-      </Card>
 
       {/* Statistik-Karten */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -660,18 +684,21 @@ export default function ReportsPage() {
           <CardContent className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis 
                   dataKey="date" 
                   tickFormatter={(date) => format(new Date(date), 'd. MMM', { locale: de })}
+                  className="text-muted-foreground text-xs"
                 />
                 <YAxis 
                   yAxisId="left"
                   tickFormatter={(value) => `${value.toFixed(1)} kWh`}
+                  className="text-muted-foreground text-xs"
                 />
                 <Tooltip
-                  formatter={(value: number) => [`${value.toFixed(2)} kWh`, 'Energie']}
-                  labelFormatter={(date) => format(new Date(date), 'PPP', { locale: de })}
+                  content={({ active, payload, label }) => (
+                    <CustomTooltip active={active} payload={payload} label={label} type="energy" />
+                  )}
                 />
                 <Bar 
                   dataKey="energy" 
@@ -691,18 +718,21 @@ export default function ReportsPage() {
           <CardContent className="h-[400px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dailyData}>
-                <CartesianGrid strokeDasharray="3 3" />
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis 
                   dataKey="date"
                   tickFormatter={(date) => format(new Date(date), 'd. MMM', { locale: de })}
+                  className="text-muted-foreground text-xs"
                 />
                 <YAxis 
                   yAxisId="left"
                   tickFormatter={(value) => `${value.toFixed(2)} €`}
+                  className="text-muted-foreground text-xs"
                 />
                 <Tooltip
-                  formatter={(value: number) => [`${value.toFixed(2)} €`, 'Kosten']}
-                  labelFormatter={(date) => format(new Date(date), 'PPP', { locale: de })}
+                  content={({ active, payload, label }) => (
+                    <CustomTooltip active={active} payload={payload} label={label} type="cost" />
+                  )}
                 />
                 <Line 
                   type="monotone" 
