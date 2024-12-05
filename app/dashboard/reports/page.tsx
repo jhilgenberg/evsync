@@ -51,7 +51,7 @@ import { formatInTimeZone } from 'date-fns-tz'
 import { cn } from '@/lib/utils'
 import { ScheduleReportDialog } from './components/schedule-report-dialog'
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { WallboxConnection } from '@/types/wallbox'
+import { WallboxConnection, Car } from '@/types/wallbox'
 
 type ChargingSession = {
   id: string
@@ -62,6 +62,7 @@ type ChargingSession = {
   cost: number
   tariff_name: string
   energy_rate: number
+  car_id: string
 }
 
 type DailyData = {
@@ -75,6 +76,8 @@ const PAGE_SIZES = [5, 10, 20, 50, 100]
 
 export default function ReportsPage() {
   const [sessions, setSessions] = useState<ChargingSession[]>([])
+  const [cars, setCars] = useState<Car[]>([])
+  const [selectedCar, setSelectedCar] = useState<string | undefined>()
   const [loading, setLoading] = useState(true)
   const [dateFrom, setDateFrom] = useState(() => {
     const date = new Date()
@@ -93,16 +96,7 @@ export default function ReportsPage() {
   const loadSessions = useCallback(async () => {
     try {
       setLoading(true)
-      // Berechne den vorherigen Zeitraum
-      const currentStart = new Date(dateFrom)
-      const currentEnd = new Date(dateTo)
-      const duration = currentEnd.getTime() - currentStart.getTime()
-      const previousStart = new Date(currentStart.getTime() - duration)
-      
-      // Lade Daten für beide Zeiträume
-      const response = await fetch(
-        `/api/charging-sessions?from=${format(previousStart, 'yyyy-MM-dd')}&to=${dateTo}`
-      )
+      const response = await fetch(`/api/charging-sessions?car_id=${selectedCar || ''}`)
       if (!response.ok) throw new Error('Laden fehlgeschlagen')
       const data = await response.json()
       setSessions(data)
@@ -116,11 +110,28 @@ export default function ReportsPage() {
     } finally {
       setLoading(false)
     }
-  }, [dateFrom, dateTo, toast])
+  }, [selectedCar, toast])
+
+  const loadCars = useCallback(async () => {
+    try {
+      const response = await fetch('/api/cars')
+      if (!response.ok) throw new Error('Laden fehlgeschlagen')
+      const data = await response.json()
+      setCars(data.cars)
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Autos konnten nicht geladen werden",
+      })
+      console.error(error)
+    }
+  }, [toast])
 
   useEffect(() => {
     loadSessions()
-  }, [loadSessions])
+    loadCars()
+  }, [loadSessions, loadCars])
 
   const handleSync = useCallback(async () => {
     try {
@@ -405,7 +416,7 @@ export default function ReportsPage() {
           <Tabs defaultValue="month" onValueChange={(value) => setIsCustomRange(value === 'custom')}>
             <div className="flex flex-col space-y-4">
               <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="month">Monatsauswahl</TabsTrigger>
+                <TabsTrigger value="month">Monatsauswählen</TabsTrigger>
                 <TabsTrigger value="custom">Benutzerdefiniert</TabsTrigger>
               </TabsList>
 

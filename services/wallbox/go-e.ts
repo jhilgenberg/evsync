@@ -16,6 +16,9 @@ interface GoEChargingSession {
   eto_end: number
   wifi: string
   link: string
+  id_chip: number
+  id_chip_uid: string
+  id_chip_name: string
 }
 
 interface GoEResponse {
@@ -145,7 +148,10 @@ export class GoEService {
       energy: session.energy,
       max_power: session.max_power,
       duration_minutes: this.parseGoEDuration(session.seconds_charged),
-      raw: session
+      raw: session,
+      id_chip: session.id_chip,
+      id_chip_uid: session.id_chip_uid,
+      id_chip_name: session.id_chip_name,
     }))
   }
 

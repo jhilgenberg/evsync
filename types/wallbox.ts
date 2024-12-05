@@ -63,4 +63,23 @@ export type WallboxConnection = {
   configuration: Record<string, any>
   created_at: string
   last_sync: string | null
+}
+
+export interface ChargingSession {
+    id: string;
+    start_time: string;
+    end_time: string;
+    energy: number;
+    max_power: number;
+    duration_minutes: number;
+    id_chip?: string;
+    id_chip_uid?: string;
+    id_chip_name?: string;
+}
+
+export interface Car {
+    id: string;
+    make: string;
+    model: string;
+    license_plate: string;
 } 

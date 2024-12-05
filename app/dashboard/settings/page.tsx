@@ -7,11 +7,16 @@ import { PlusCircle, Pencil } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { TariffDialog } from './components/tariff-dialog'
 import { ElectricityTariff, TariffFormData } from '@/types/tariff'
+import { CarDialog } from './components/car-dialog'
+import { Car } from '@/types/wallbox'
 
 export default function SettingsPage() {
   const [tariffs, setTariffs] = useState<ElectricityTariff[]>([])
+  const [cars, setCars] = useState<Car[]>([])
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [selectedTariff, setSelectedTariff] = useState<ElectricityTariff | undefined>()
+  const [isCarDialogOpen, setIsCarDialogOpen] = useState(false)
+  const [selectedCar, setSelectedCar] = useState<Car | undefined>()
   const { toast } = useToast()
 
   const loadTariffs = useCallback(async () => {
@@ -30,9 +35,26 @@ export default function SettingsPage() {
     }
   }, [toast])
 
+  const loadCars = useCallback(async () => {
+    try {
+      const response = await fetch('/api/cars')
+      if (!response.ok) throw new Error('Laden fehlgeschlagen')
+      const data = await response.json()
+      setCars(data.cars)
+    } catch (error: unknown) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Autos konnten nicht geladen werden",
+      })
+      console.error(error)
+    }
+  }, [toast])
+
   useEffect(() => {
     loadTariffs()
-  }, [loadTariffs])
+    loadCars()
+  }, [loadTariffs, loadCars])
 
   const handleSaveTariff = async (formData: TariffFormData) => {
     try {
@@ -56,6 +78,27 @@ export default function SettingsPage() {
       setSelectedTariff(undefined)
     } catch (error: unknown) {
       throw error
+    }
+  }
+
+  const handleSaveCar = async (carData: Car) => {
+    try {
+      const response = await fetch('/api/cars', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(carData),
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error)
+      }
+
+      await loadCars()
+    } catch (error) {
+      console.error('Fehler beim Speichern des Autos:', error)
     }
   }
 
@@ -121,6 +164,53 @@ export default function SettingsPage() {
         onSave={handleSaveTariff}
         currentTariff={selectedTariff}
       />
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Autos</CardTitle>
+          <Button onClick={() => {
+            setSelectedCar(undefined)
+            setIsCarDialogOpen(true)
+          }}>
+            <PlusCircle className="sm:mr-2 h-4 w-4" />
+            Auto hinzufügen</Button>
+          <CarDialog
+            open={isCarDialogOpen}
+            onOpenChange={setIsCarDialogOpen}
+            onSave={handleSaveCar}
+            currentCar={selectedCar}
+        />  
+        </CardHeader>
+        <CardContent>
+          {cars.length === 0 ? (
+            <p className="text-muted-foreground text-center py-4">
+              Noch keine Autos hinterlegt
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {cars.map((car) => (
+                <div key={car.id} className="flex items-center justify-between p-4 rounded-lg border">
+                  <div>
+                    <h3 className="font-medium">{car.make} {car.model}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Kennzeichen: {car.license_plate}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      setSelectedCar(car)
+                      setIsCarDialogOpen(true)
+                    }}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 } 
