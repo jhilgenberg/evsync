@@ -276,7 +276,8 @@ export default function ReportsPage() {
         },
         body: JSON.stringify({
           startDate: dateFrom,
-          endDate: dateTo
+          endDate: dateTo,
+          carId: selectedCar === NO_SELECTION ? null : selectedCar
         })
       })
 
@@ -289,7 +290,7 @@ export default function ReportsPage() {
       // Erstelle einen temporären Link zum Herunterladen
       const link = document.createElement('a')
       link.href = pdf
-      link.download = `EVSync_Ladebericht_${dateFrom}_${dateTo}.pdf`
+      link.download = `EVSync_Ladebericht_${dateFrom}_${dateTo}${selectedCar ? '_' + selectedCar : ''}.pdf`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)

@@ -27,17 +27,38 @@ export async function POST(request: Request) {
       )
     }
 
-    const { startDate, endDate } = await request.json()
+    const { startDate, endDate, carId } = await request.json()
 
-    // Lade die Ladevorgänge
-    const { data: sessions, error } = await supabase
+    // Lade die Ladevorgänge mit Filter
+    let query = supabase
       .from('charging_sessions')
-      .select('*')
+      .select('*, cars(make, model, license_plate)')  // Join mit cars Tabelle
       .gte('start_time', startDate)
       .lte('end_time', endDate)
       .order('start_time', { ascending: false })
 
+    // Füge car_id Filter hinzu wenn ausgewählt
+    if (carId) {
+      query = query.eq('car_id', carId)
+    }
+
+    const { data: sessions, error } = await query
+
     if (error) throw error
+
+    // Hole den Autonamen für den Titel wenn gefiltert wird
+    let carInfo = ''
+    if (carId) {
+      const { data: car } = await supabase
+        .from('cars')
+        .select('make, model')
+        .eq('id', carId)
+        .single()
+      
+      if (car) {
+        carInfo = ` - ${car.make} ${car.model}`
+      }
+    }
 
     const colors: { [key: string]: [number, number, number] } = {
       primary: [0, 113, 227],
@@ -60,7 +81,7 @@ export async function POST(request: Request) {
     doc.text('EVSync', 15, 20)
     doc.setFontSize(12)
     doc.setFont('helvetica', 'normal' as const)
-    doc.text('Ladebericht', 15, 30)
+    doc.text(`Ladebericht${carInfo}`, 15, 30)
 
     // Zeitraum Box mit abgerundeten Ecken
     doc.setDrawColor(...colors.primary)
@@ -164,9 +185,9 @@ export async function POST(request: Request) {
       }
     }
     
-    // Tabellendaten mit verbessertem Layout
+    // Tabellendaten mit verbessertem Layout und Autoinformationen
     autoTable(doc, {
-      head: [['Datum', 'Dauer', 'Energie', 'Tarif', 'Kosten']],
+      head: [['Datum', 'Dauer', 'Energie', 'Tarif', 'Auto', 'Kosten']],
       body: sessions.map(session => {
         const startDate = parseISO(session.start_time)
         const endDate = parseISO(session.end_time)
@@ -174,11 +195,16 @@ export async function POST(request: Request) {
         const hours = Math.floor(duration / 60)
         const minutes = duration % 60
 
+        // Hole die Autoinformationen aus dem Join
+        const car = session.cars
+        const carInfo = car ? `${car.make} ${car.model}\n(${car.license_plate})` : '-'
+
         return [
           format(startDate, 'Pp', { locale: de }),
           `${hours > 0 ? `${hours}h ` : ''}${minutes}min`,
           `${session.energy_kwh.toFixed(2)} kWh`,
           `${session.tariff_name}\n(${session.energy_rate.toFixed(2)} ct/kWh)`,
+          carInfo,
           `${session.cost.toFixed(2)} €`
         ]
       }),
