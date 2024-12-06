@@ -60,6 +60,7 @@ export default function AuthPage() {
         body: JSON.stringify({
           email: formData.get('email'),
           password: formData.get('password'),
+          action: 'signup',
           firstName: formData.get('firstName'),
           lastName: formData.get('lastName'),
           company: formData.get('company'),
@@ -69,6 +70,7 @@ export default function AuthPage() {
 
       if (!response.ok) {
         const data = await response.json();
+        console.error('Response error:', data.error);
         throw new Error(data.error);
       }
 

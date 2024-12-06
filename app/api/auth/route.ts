@@ -4,41 +4,65 @@ import { NextResponse } from 'next/server'
 
 export async function POST(request: Request) {
   try {
-    const { email, password, firstName, lastName, company, phone } = await request.json()
-    const cookieStore = await cookies()
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
-
-    // 1. Registriere den Benutzer
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${location.origin}/auth/callback`,
-      }
+    const { email, password, action, firstName, lastName, company, phone } = await request.json()
+    const cookieStore = cookies()
+    
+    // Erstelle einen Service-Role Client
+    const supabase = createRouteHandlerClient({ 
+      cookies: () => cookieStore,
+    }, {
+      supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
     })
 
-    if (authError) throw authError
-    if (!authData.user) throw new Error('Keine User ID erhalten')
+    if (action === 'login') {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (error) throw error
+      return NextResponse.json({ user: data.user })
+    }
 
-    // 2. Erstelle das Profil
-    const { error: profileError } = await supabase
-      .from('user_profiles') // Stellen Sie sicher, dass dies der richtige Tabellenname ist
-      .insert({
-        user_id: authData.user.id,
-        first_name: firstName,
-        last_name: lastName,
-        company,
-        phone,
-        updated_at: new Date().toISOString(),
+    if (action === 'signup') {
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName
+          },
+        },
       })
 
-    if (profileError) throw profileError
+      if (authError) throw authError
+      if (!authData.user) throw new Error('Keine User ID erhalten')
 
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error('Registration error:', error)
+      // Erstelle das Profil mit Service-Role
+      const { error: profileError } = await supabase
+        .from('user_profiles')
+        .insert({
+          user_id: authData.user.id,
+          first_name: firstName,
+          last_name: lastName,
+          company,
+          phone,
+          updated_at: new Date().toISOString(),
+        })
+
+      if (profileError) throw profileError
+
+      return NextResponse.json({ success: true })
+    }
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Registrierung fehlgeschlagen' },
+      { error: 'Ungültige Aktion' },
+      { status: 400 }
+    )
+  } catch (error: unknown) {
+    console.error('Auth error:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Ein unbekannter Fehler ist aufgetreten' },
       { status: 500 }
     )
   }

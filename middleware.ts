@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server'
 
 const publicRoutes = ['/', '/auth', '/auth/callback']
 const publicFiles = ['/logos/go-e.png', '/logos/easee.png', '/example-report.png']
+const publicApiRoutes = ['/api/auth']
 
 export async function middleware(request: NextRequest) {
   // Erlaube Zugriff auf statische Dateien
@@ -17,9 +18,12 @@ export async function middleware(request: NextRequest) {
 
   // Prüfe ob die Route öffentlich ist
   const isPublicRoute = publicRoutes.includes(request.nextUrl.pathname)
+  const isPublicApiRoute = publicApiRoutes.some(route => 
+    request.nextUrl.pathname.startsWith(route)
+  )
 
-  // Wenn nicht eingeloggt und keine öffentliche Route, redirect zu /auth
-  if (!session && !isPublicRoute) {
+  // Wenn nicht eingeloggt und keine öffentliche Route/API, redirect zu /auth
+  if (!session && !isPublicRoute && !isPublicApiRoute) {
     return NextResponse.redirect(new URL('/auth', request.url))
   }
 
@@ -34,7 +38,6 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     '/dashboard/:path*',
-    '/auth',
     '/api/:path*'
   ]
 } 
