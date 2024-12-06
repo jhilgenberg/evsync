@@ -5,29 +5,28 @@ import { NextResponse } from 'next/server'
 export async function GET(request: Request) {
   try {
     const requestUrl = new URL(request.url)
-    const code = requestUrl.searchParams.get('code')
     const token = requestUrl.searchParams.get('token')
-    const type = requestUrl.searchParams.get('type')
+    const next = requestUrl.searchParams.get('next') ?? '/dashboard'
 
-    // E-Mail Bestätigung
-    if (type === 'email' && token) {
-      const response = await fetch(`${requestUrl.origin}/api/auth/token`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token, type }),
+    if (token) {
+      const cookieStore = cookies()
+      const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
+
+      const { error } = await supabase.auth.verifyOtp({
+        type: 'email',
+        token_hash: token,
       })
 
-      if (!response.ok) {
-        console.error('Email verification failed')
+      if (error) {
+        console.error('Email verification error:', error)
         return NextResponse.redirect(new URL('/auth?error=verification-failed', request.url))
       }
 
-      return NextResponse.redirect(new URL('/dashboard?verified=true', request.url))
+      return NextResponse.redirect(new URL(`${next}?verified=true`, request.url))
     }
 
-    // Normaler Auth Callback
+    // Code exchange
+    const code = requestUrl.searchParams.get('code')
     if (code) {
       const cookieStore = cookies()
       const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
@@ -39,7 +38,7 @@ export async function GET(request: Request) {
       }
     }
 
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+    return NextResponse.redirect(new URL(next, request.url))
   } catch (error) {
     console.error('Callback error:', error)
     return NextResponse.redirect(new URL('/auth?error=unknown', request.url))
