@@ -4,11 +4,11 @@ import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
   const requestUrl = new URL(request.url)
-  const code = requestUrl.searchParams.get('code')
+  const token = requestUrl.searchParams.get('token')
 
-  if (code) {
+  if (token) {
     const supabase = createRouteHandlerClient({ cookies })
-    await supabase.auth.exchangeCodeForSession(code)
+    await supabase.auth.exchangeCodeForSession(token)
   }
 
   return NextResponse.redirect(new URL('/dashboard', request.url))

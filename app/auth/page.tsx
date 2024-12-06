@@ -46,63 +46,47 @@ export default function AuthPage() {
   }
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setIsLoading(true)
+    e.preventDefault();
+    setIsLoading(true);
 
     try {
-      const formData = new FormData(e.currentTarget)
+      const formData = new FormData(e.currentTarget);
       
-      // 1. Registriere den Benutzer
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.get('email') as string,
-        password: formData.get('password') as string,
-        options: {
-          emailRedirectTo: `${location.origin}/auth/callback`,
-        }
-      })
-
-      if (authError) {
-        console.error('Auth Error:', authError)
-        throw authError
-      }
-
-      if (!authData.user?.id) {
-        throw new Error('Keine User ID erhalten')
-      }
-
-      // 2. Speichere zusätzliche Benutzerdaten
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: authData.user.id, // Verwende die user id als profile id
-          first_name: formData.get('firstName'),
-          last_name: formData.get('lastName'),
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.get('email'),
+          password: formData.get('password'),
+          firstName: formData.get('firstName'),
+          lastName: formData.get('lastName'),
           company: formData.get('company'),
           phone: formData.get('phone'),
-          updated_at: new Date().toISOString(),
-        })
+        }),
+      });
 
-      if (profileError) {
-        console.error('Profile Error:', profileError)
-        throw profileError
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error);
       }
 
       toast({
         title: "Registrierung erfolgreich",
         description: "Bitte bestätigen Sie Ihre E-Mail-Adresse.",
-      })
-      
+      });
     } catch (error) {
-      console.error('Registration Error:', error)
+      console.error('Registration Error:', error);
       toast({
         variant: "destructive",
         title: "Fehler bei der Registrierung",
         description: error instanceof Error ? error.message : "Bitte überprüfen Sie Ihre Eingaben.",
-      })
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-background">
