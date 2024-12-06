@@ -41,6 +41,7 @@ export async function POST(request: Request) {
         { error: 'Verbindung konnte nicht hergestellt werden' },
         { status: 400 }
       )
+      console.error(error)
     }
 
     // Speichere die Verbindung mit verschlüsselter Konfiguration
