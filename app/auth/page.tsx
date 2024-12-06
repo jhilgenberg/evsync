@@ -52,7 +52,7 @@ export default function AuthPage() {
     try {
       const formData = new FormData(e.currentTarget);
       
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('/api/auth', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -72,10 +72,7 @@ export default function AuthPage() {
         throw new Error(data.error);
       }
 
-      toast({
-        title: "Registrierung erfolgreich",
-        description: "Bitte bestätigen Sie Ihre E-Mail-Adresse.",
-      });
+      router.push('/thank-you');
     } catch (error) {
       console.error('Registration Error:', error);
       toast({
