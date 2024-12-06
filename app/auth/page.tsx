@@ -10,7 +10,6 @@ import { useToast } from "@/hooks/use-toast"
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft } from 'lucide-react'
 
 export default function AuthPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -90,14 +89,6 @@ export default function AuthPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-gray-900 dark:to-background">
       <div className="container relative flex-col items-center justify-center md:grid lg:max-w-none lg:px-0">
-        <Link 
-          href="/" 
-          className="absolute left-4 top-4 md:left-8 md:top-8 flex items-center text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Zurück zur Startseite
-        </Link>
-
         <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px] pt-16">
           <div className="flex flex-col space-y-2 text-center">
             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-blue-500 to-violet-500 bg-clip-text text-transparent">
