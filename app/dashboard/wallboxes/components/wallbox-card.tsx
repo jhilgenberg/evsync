@@ -170,7 +170,7 @@ export function WallboxCard({ connection, providerName, providerLogo, onEdit, on
           <AlertDialogHeader>
             <AlertDialogTitle>Wallbox löschen</AlertDialogTitle>
             <AlertDialogDescription>
-              Möchten Sie die Wallbox "{connection.name}" wirklich löschen? 
+              Möchten Sie die Wallbox &quot;{connection.name}&quot; wirklich löschen? 
               Diese Aktion kann nicht rückgängig gemacht werden.
             </AlertDialogDescription>
           </AlertDialogHeader>
