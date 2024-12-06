@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,7 +19,10 @@ export function EditWallboxDialog({ open, onOpenChange, onSave, connection }: Pr
   const provider = WALLBOX_PROVIDERS.find(p => p.id === connection.provider_id)
   const [formData, setFormData] = useState<Record<string, string>>({
     name: connection.name,
-    ...connection.configuration
+    ...Object.fromEntries(
+      Object.entries(connection.configuration)
+        .filter(([key]) => !key.endsWith('_encrypted') && !key.endsWith('_iv'))
+    )
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,9 +32,13 @@ export function EditWallboxDialog({ open, onOpenChange, onSave, connection }: Pr
     const updatedConnection: WallboxConnection = {
       ...connection,
       name: formData.name,
-      configuration: Object.fromEntries(
-        provider.fields.map(field => [field.id, formData[field.id]])
-      )
+      configuration: {
+        ...formData,
+        ...Object.fromEntries(
+          Object.entries(connection.configuration)
+            .filter(([key]) => !key.includes('api_key') && !key.includes('password'))
+        )
+      }
     }
 
     await onSave(updatedConnection)

@@ -2,6 +2,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { createWallboxService } from '@/services/wallbox/factory'
+import { EncryptionService } from '@/services/encryption'
 
 export async function POST(request: Request) {
   try {
@@ -16,26 +17,36 @@ export async function POST(request: Request) {
       )
     }
 
-    const connection = await request.json()
-    
-    // Teste die Verbindung
+    const body = await request.json()
+    const encryptionService = new EncryptionService()
+
+    // Verschlüssele die sensiblen Konfigurationsdaten
+    const encryptedConfig = encryptionService.encryptConfig(body.configuration)
+
+    const connection = {
+      ...body,
+      user_id: session.user.id,
+      configuration: encryptedConfig
+    }
+
+    // Teste die Verbindung mit entschlüsselter Konfiguration
     try {
-      const service = createWallboxService(connection)
+      const service = createWallboxService({
+        ...connection,
+        configuration: body.configuration // Verwende Original-Konfiguration für Test
+      })
       await service.getStatus()
-    } catch (_error: unknown) {
+    } catch (error: unknown) {
       return NextResponse.json(
-        { error: 'Verbindung konnte nicht hergestellt werden:', _error },
+        { error: 'Verbindung konnte nicht hergestellt werden' },
         { status: 400 }
       )
     }
 
-    // Speichere die Verbindung
+    // Speichere die Verbindung mit verschlüsselter Konfiguration
     const { data, error } = await supabase
       .from('wallbox_connections')
-      .insert({
-        ...connection,
-        user_id: session.user.id,
-      })
+      .insert(connection)
       .select()
       .single()
 
