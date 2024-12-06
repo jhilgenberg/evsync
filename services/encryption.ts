@@ -1,34 +1,21 @@
-import { createCipheriv, createDecipheriv, randomBytes } from 'crypto'
-
 export class EncryptionService {
-  private algorithm = 'aes-256-cbc'
-  private key: Buffer
+  private encoder = new TextEncoder()
+  private decoder = new TextDecoder()
 
   constructor() {
-    const encryptionKey = process.env.ENCRYPTION_KEY
+    const encryptionKey = process.env.NEXT_PUBLIC_ENCRYPTION_KEY
     if (!encryptionKey) {
       throw new Error('ENCRYPTION_KEY nicht konfiguriert')
-    }
-    
-    // Überprüfe die Schlüssellänge
-    if (encryptionKey.length !== 64) { // 32 Bytes = 64 Hex-Zeichen
-      throw new Error('ENCRYPTION_KEY muss 32 Bytes (64 Hex-Zeichen) lang sein')
-    }
-    
-    try {
-      this.key = Buffer.from(encryptionKey, 'hex')
-    } catch (error) {
-      throw new Error('ENCRYPTION_KEY muss ein gültiger Hex-String sein')
     }
   }
 
   // Verschlüsselt ein komplettes Konfigurations-Objekt
-  encryptConfig(config: Record<string, any>): Record<string, any> {
+  async encryptConfig(config: Record<string, any>): Promise<Record<string, any>> {
     const encryptedConfig: Record<string, any> = {}
     
     for (const [key, value] of Object.entries(config)) {
       if (this.shouldEncrypt(key)) {
-        const { encrypted, iv } = this.encrypt(value)
+        const { encrypted, iv } = await this.encrypt(value)
         encryptedConfig[`${key}_encrypted`] = encrypted
         encryptedConfig[`${key}_iv`] = iv
       } else {
@@ -40,7 +27,7 @@ export class EncryptionService {
   }
 
   // Entschlüsselt ein komplettes Konfigurations-Objekt
-  decryptConfig(config: Record<string, any>): Record<string, any> {
+  async decryptConfig(config: Record<string, any>): Promise<Record<string, any>> {
     const decryptedConfig: Record<string, any> = {}
     
     for (const key of Object.keys(config)) {
@@ -49,7 +36,7 @@ export class EncryptionService {
         const value = config[key]
         const iv = config[`${baseKey}_iv`]
         if (value && iv) {
-          decryptedConfig[baseKey] = this.decrypt(value, iv)
+          decryptedConfig[baseKey] = await this.decrypt(value, iv)
         }
       } else if (!key.endsWith('_iv')) {
         decryptedConfig[key] = config[key]
@@ -60,30 +47,85 @@ export class EncryptionService {
   }
 
   private shouldEncrypt(key: string): boolean {
-    // Liste der zu verschlüsselnden Felder
     const sensitiveFields = ['api_key', 'username', 'password']
     return sensitiveFields.includes(key)
   }
 
-  private encrypt(text: string): { encrypted: string; iv: string } {
-    const iv = randomBytes(16)
-    const cipher = createCipheriv(this.algorithm, this.key, iv)
-    let encrypted = cipher.update(text, 'utf8', 'hex')
-    encrypted += cipher.final('hex')
+  private async encrypt(text: string): Promise<{ encrypted: string; iv: string }> {
+    const key = await this.getKey()
+    const iv = crypto.getRandomValues(new Uint8Array(12))
+    const encodedText = this.encoder.encode(text)
+
+    const encrypted = await crypto.subtle.encrypt(
+      {
+        name: 'AES-GCM',
+        iv: iv
+      },
+      key,
+      encodedText
+    )
+
     return {
-      encrypted,
-      iv: iv.toString('hex')
+      encrypted: this.arrayBufferToBase64(encrypted),
+      iv: this.arrayBufferToBase64(iv)
     }
   }
 
-  private decrypt(encrypted: string, iv: string): string {
-    const decipher = createDecipheriv(
-      this.algorithm, 
-      this.key, 
-      Buffer.from(iv, 'hex')
+  private async decrypt(encrypted: string, iv: string): Promise<string> {
+    const key = await this.getKey()
+    const encryptedData = this.base64ToArrayBuffer(encrypted)
+    const ivData = this.base64ToArrayBuffer(iv)
+
+    const decrypted = await crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: ivData
+      },
+      key,
+      encryptedData
     )
-    let decrypted = decipher.update(encrypted, 'hex', 'utf8')
-    decrypted += decipher.final('utf8')
-    return decrypted
+
+    return this.decoder.decode(decrypted)
+  }
+
+  private async getKey(): Promise<CryptoKey> {
+    const keyMaterial = await crypto.subtle.importKey(
+      'raw',
+      this.encoder.encode(process.env.NEXT_PUBLIC_ENCRYPTION_KEY),
+      { name: 'PBKDF2' },
+      false,
+      ['deriveBits', 'deriveKey']
+    )
+
+    return crypto.subtle.deriveKey(
+      {
+        name: 'PBKDF2',
+        salt: new Uint8Array(16),
+        iterations: 100000,
+        hash: 'SHA-256'
+      },
+      keyMaterial,
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    )
+  }
+
+  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i])
+    }
+    return btoa(binary)
+  }
+
+  private base64ToArrayBuffer(base64: string): ArrayBuffer {
+    const binary = atob(base64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return bytes.buffer
   }
 }

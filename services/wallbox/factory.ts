@@ -2,9 +2,9 @@ import { GoEService } from './go-e'
 import { EaseeService } from './easee'
 import { EncryptionService } from '@/services/encryption'
 
-export function createWallboxService(connection: any) {
+export async function createWallboxService(connection: any) {
   const encryptionService = new EncryptionService()
-  const decryptedConfig = encryptionService.decryptConfig(connection.configuration)
+  const decryptedConfig = await encryptionService.decryptConfig(connection.configuration)
 
   switch (connection.provider_id) {
     case 'go-e':
