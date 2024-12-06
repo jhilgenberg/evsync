@@ -141,6 +141,14 @@ export default function AuthPage() {
                         type="password"
                         required
                       />
+                      <div className="text-sm text-right">
+                        <Link
+                          href="/auth/forgot-password"
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          Passwort vergessen?
+                        </Link>
+                      </div>
                     </div>
                     <Button 
                       type="submit" 
