@@ -69,6 +69,42 @@ export default function WallboxesPage() {
     }
   }
 
+  const handleEdit = async (connection: WallboxConnection) => {
+    try {
+      const response = await fetch(`/api/wallboxes/${connection.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(connection),
+      });
+      if (!response.ok) throw new Error();
+      await loadConnections();
+      toast({ title: "Erfolg", description: "Wallbox wurde aktualisiert" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Wallbox konnte nicht aktualisiert werden",
+      });
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await fetch(`/api/wallboxes/${id}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error();
+      await loadConnections();
+      toast({ title: "Erfolg", description: "Wallbox wurde gelöscht" });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Fehler",
+        description: "Wallbox konnte nicht gelöscht werden",
+      });
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center h-screen">
       <p>Laden...</p>
@@ -110,6 +146,8 @@ export default function WallboxesPage() {
                 connection={connection}
                 providerName={provider.name}
                 providerLogo={provider.logo}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
               />
             )
           })}
