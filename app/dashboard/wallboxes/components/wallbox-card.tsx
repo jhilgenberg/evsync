@@ -5,19 +5,40 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { WallboxConnection, WallboxStatus } from '@/types/wallbox'
 import { WallboxDetailsDialog } from './wallbox-details-dialog'
-import { Zap, Battery } from 'lucide-react'
+import { EditWallboxDialog } from './edit-wallbox-dialog'
+import { Zap, Battery, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface Props {
   connection: WallboxConnection
   providerName: string
   providerLogo: string
+  onEdit: (connection: WallboxConnection) => Promise<void>
+  onDelete: (id: string) => Promise<void>
 }
 
-export function WallboxCard({ connection, providerName, providerLogo }: Props) {
+export function WallboxCard({ connection, providerName, providerLogo, onEdit, onDelete }: Props) {
   const [showDetails, setShowDetails] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
+  const [showDelete, setShowDelete] = useState(false)
   const [status, setStatus] = useState<WallboxStatus>()
   const { toast } = useToast()
 
@@ -74,6 +95,26 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
                 {providerName}
               </p>
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setShowEdit(true)}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Bearbeiten
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setShowDelete(true)}
+                  className="text-red-600"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Löschen
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className="mt-6 grid grid-cols-2 gap-4">
@@ -116,6 +157,34 @@ export function WallboxCard({ connection, providerName, providerLogo }: Props) {
         connection={connection}
         status={status}
       />
+
+      <EditWallboxDialog
+        open={showEdit}
+        onOpenChange={setShowEdit}
+        connection={connection}
+        onSave={onEdit}
+      />
+
+      <AlertDialog open={showDelete} onOpenChange={setShowDelete}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Wallbox löschen</AlertDialogTitle>
+            <AlertDialogDescription>
+              Möchten Sie die Wallbox "{connection.name}" wirklich löschen? 
+              Diese Aktion kann nicht rückgängig gemacht werden.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => onDelete(connection.id)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Löschen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 } 
