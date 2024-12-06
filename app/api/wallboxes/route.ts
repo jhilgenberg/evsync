@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
     // Teste die Verbindung mit entschlüsselter Konfiguration
     try {
-      const service = createWallboxService({
+      const service = await createWallboxService({
         ...connection,
         configuration: body.configuration // Verwende Original-Konfiguration für Test
       })
