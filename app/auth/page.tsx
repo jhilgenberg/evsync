@@ -52,48 +52,53 @@ export default function AuthPage() {
     try {
       const formData = new FormData(e.currentTarget)
       
-      // Registriere den Benutzer
+      // 1. Registriere den Benutzer
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.get('email') as string,
         password: formData.get('password') as string,
         options: {
           emailRedirectTo: `${location.origin}/auth/callback`,
-          data: {
-            first_name: formData.get('firstName'),
-            last_name: formData.get('lastName'),
-            company: formData.get('company'),
-          }
-        },
+        }
       })
 
-      if (authError) throw authError
+      if (authError) {
+        console.error('Auth Error:', authError)
+        throw authError
+      }
 
-      // Speichere zusätzliche Benutzerdaten
-      if (authData.user) {
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            user_id: authData.user.id,
-            first_name: formData.get('firstName'),
-            last_name: formData.get('lastName'),
-            company: formData.get('company'),
-            phone: formData.get('phone'),
-          })
+      if (!authData.user?.id) {
+        throw new Error('Keine User ID erhalten')
+      }
 
-        if (profileError) throw profileError
+      // 2. Speichere zusätzliche Benutzerdaten
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: authData.user.id, // Verwende die user id als profile id
+          first_name: formData.get('firstName'),
+          last_name: formData.get('lastName'),
+          company: formData.get('company'),
+          phone: formData.get('phone'),
+          updated_at: new Date().toISOString(),
+        })
+
+      if (profileError) {
+        console.error('Profile Error:', profileError)
+        throw profileError
       }
 
       toast({
         title: "Registrierung erfolgreich",
         description: "Bitte bestätigen Sie Ihre E-Mail-Adresse.",
       })
+      
     } catch (error) {
+      console.error('Registration Error:', error)
       toast({
         variant: "destructive",
         title: "Fehler bei der Registrierung",
-        description: "Bitte überprüfen Sie Ihre Eingaben.",
+        description: error instanceof Error ? error.message : "Bitte überprüfen Sie Ihre Eingaben.",
       })
-      console.error(error)
     } finally {
       setIsLoading(false)
     }

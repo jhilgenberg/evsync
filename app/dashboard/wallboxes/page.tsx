@@ -85,6 +85,7 @@ export default function WallboxesPage() {
         title: "Fehler",
         description: "Wallbox konnte nicht aktualisiert werden",
       });
+      console.error(error)
     }
   };
 
@@ -102,6 +103,7 @@ export default function WallboxesPage() {
         title: "Fehler",
         description: "Wallbox konnte nicht gelöscht werden",
       });
+      console.error(error)
     }
   };
 
