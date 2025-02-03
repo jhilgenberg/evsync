@@ -1,4 +1,5 @@
 import { WallboxStatus, WallboxCarState, type PhaseInfo } from '@/types/wallbox'
+import { WallboxService } from '@/types/wallbox-service'
 
 interface EaseeToken {
   accessToken: string
@@ -69,7 +70,7 @@ interface EaseeSession {
   totalDuration: number
 }
 
-export class EaseeService {
+export class EaseeService implements WallboxService {
   private baseUrl = 'https://api.easee.cloud/api'
   private token: string | null = null
   private tokenExpiry: number = 0

@@ -1,8 +1,9 @@
 import { GoEService } from './go-e'
 import { EaseeService } from './easee'
 import { EncryptionService } from '@/services/encryption'
+import { WallboxService } from '@/types/wallbox-service';
 
-export async function createWallboxService(connection: any) {
+export async function createWallboxService(connection: any): Promise<WallboxService> {
   const encryptionService = new EncryptionService()
   const decryptedConfig = await encryptionService.decryptConfig(connection.configuration)
 

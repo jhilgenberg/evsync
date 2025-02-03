@@ -1,5 +1,6 @@
 import { WallboxStatus, WallboxCarState, type PhaseInfo } from '@/types/wallbox'
 import { GoEStatus } from '@/types/go-e'
+import { WallboxService } from '@/types/wallbox-service'
 
 interface GoEChargingSession {
   session_number: number
@@ -26,7 +27,7 @@ interface GoEResponse {
   data: GoEChargingSession[]
 }
 
-export class GoEService {
+export class GoEService implements WallboxService {
   private baseUrl: string
   private apiKey: string
   private dataToken: string | null = null
@@ -125,7 +126,7 @@ export class GoEService {
     }
   }
 
-  async getChargingSessions(from?: Date, to?: Date) {
+  async getChargingSessions(from?: Date, to?: Date): Promise<any[]> {
     const token = await this.getDataToken()
     let url = `https://data.v3.go-e.io/api/v1/direct_json?e=${token}`
 

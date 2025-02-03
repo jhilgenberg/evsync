@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { createWallboxService } from './wallbox/factory'
 import { CostCalculator } from './cost-calculator'
+import { WallboxService } from '@/types/wallbox-service'
 
 export class SyncService {
   private supabase = createClient(
@@ -36,7 +37,7 @@ export class SyncService {
       const costCalculator = new CostCalculator(tariffs || [])
 
       // Erstelle den Service mit entschlüsselter Konfiguration
-      const service = await createWallboxService(connection)
+      const service: WallboxService = await createWallboxService(connection)
 
       const { data: lastSession } = await this.supabase
         .from('charging_sessions')
