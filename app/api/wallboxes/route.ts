@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { createWallboxService } from '@/services/wallbox/factory'
 import { EncryptionService } from '@/services/encryption'
+import { encrypt } from '@/services/encryption'
 
 export async function POST(request: Request) {
   try {
@@ -34,8 +35,8 @@ export async function POST(request: Request) {
       )
     }
 
-    // Verschlüssele die sensiblen Konfigurationsdaten
-    const encryptedConfig = await encryptionService.encryptConfig(body.configuration)
+    // Verschlüssele nur die sensiblen Daten
+    const encryptedConfig = encrypt(JSON.stringify(body.configuration))
 
     const connection = {
       ...body,
@@ -54,8 +55,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json(data)
   } catch (error: unknown) {
+    console.error('Error saving wallbox:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unbekannter Fehler' },
+      { error: 'Fehler beim Speichern der Wallbox' },
       { status: 500 }
     )
   }

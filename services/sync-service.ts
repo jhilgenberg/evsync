@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { createWallboxService } from './wallbox/factory'
 import { CostCalculator } from './cost-calculator'
 import { WallboxService } from '@/types/wallbox-service'
+import { WallboxConnection } from '@/types/wallbox'
 
 export class SyncService {
   private supabase = createClient(
@@ -25,8 +26,11 @@ export class SyncService {
     }
   }
 
-  private async syncWallbox(connection: any) {
+  private async syncWallbox(connection: WallboxConnection) {
     try {
+      const service = await createWallboxService(connection)
+      await service.getStatus() // Status abrufen, aber nicht neu zuweisen
+      
       // Hole die Tarife des Benutzers
       const { data: tariffs } = await this.supabase
         .from('electricity_tariffs')
@@ -35,9 +39,6 @@ export class SyncService {
         .order('valid_from', { ascending: false })
 
       const costCalculator = new CostCalculator(tariffs || [])
-
-      // Erstelle den Service mit entschlüsselter Konfiguration
-      const service: WallboxService = await createWallboxService(connection)
 
       const { data: lastSession } = await this.supabase
         .from('charging_sessions')
@@ -93,7 +94,8 @@ export class SyncService {
         .eq('id', connection.id)
 
     } catch (error) {
-      console.error(`Sync error for wallbox ${connection.id}:`, error)
+      console.error(`Fehler bei der Synchronisation von Wallbox ${connection.id}:`, error)
+      throw error
     }
   }
 } 

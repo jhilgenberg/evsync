@@ -27,28 +27,49 @@ interface GoEResponse {
   data: GoEChargingSession[]
 }
 
-export class GoEService implements WallboxService {
+export interface GoEConfig {
+  api_key: string
+  charger_id: string
+}
+
+export class GoEWallbox implements WallboxService {
+  private api_key: string
+  private charger_id: string
   private baseUrl: string
-  private apiKey: string
   private dataToken: string | null = null
 
-  constructor(config: { api_key: string; charger_id: string }) {
-    this.apiKey = config.api_key
-    this.baseUrl = `https://${config.charger_id}.api.v3.go-e.io`
+  constructor(config: GoEConfig) {
+    this.api_key = config.api_key
+    this.charger_id = config.charger_id
+    this.baseUrl = `https://${this.charger_id}.api.v3.go-e.io`
   }
 
   private async request(endpoint: string) {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
-      headers: {
-        'Authorization': `Bearer ${this.apiKey}`,
-      },
-    })
+    const url = `${this.baseUrl}${endpoint}`
+    console.log(`GoE API Request: ${url}`)
+    
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${this.api_key}`,
+        },
+      })
 
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.statusText}`)
+      console.log('Response Status:', response.status)
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('API Error Response:', errorText)
+        throw new Error(`API Error: ${response.status} ${response.statusText}\n${errorText}`)
+      }
+
+      const data = await response.json()
+      return data
+
+    } catch (error) {
+      console.error('GoE API Request failed:', error)
+      throw new Error(`Fehler bei der API-Anfrage: ${error instanceof Error ? error.message : 'Unbekannter Fehler'}`)
     }
-
-    return response.json()
   }
 
   private async getDataToken() {
