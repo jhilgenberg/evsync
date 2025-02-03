@@ -20,20 +20,11 @@ export async function POST(request: Request) {
     const body = await request.json()
     const encryptionService = new EncryptionService()
 
-    // Verschlüssele die sensiblen Konfigurationsdaten
-    const encryptedConfig = encryptionService.encryptConfig(body.configuration)
-
-    const connection = {
-      ...body,
-      user_id: session.user.id,
-      configuration: encryptedConfig
-    }
-
-    // Teste die Verbindung mit entschlüsselter Konfiguration
+    // Teste die Verbindung mit Original-Konfiguration
     try {
       const service = await createWallboxService({
-        ...connection,
-        configuration: body.configuration // Verwende Original-Konfiguration für Test
+        ...body,
+        configuration: body.configuration
       })
       await service.getStatus()
     } catch (error: unknown) {
@@ -41,10 +32,18 @@ export async function POST(request: Request) {
         { error: 'Verbindung konnte nicht hergestellt werden' },
         { status: 400 }
       )
-      console.error(error)
     }
 
-    // Speichere die Verbindung mit verschlüsselter Konfiguration
+    // Verschlüssele die sensiblen Konfigurationsdaten
+    const encryptedConfig = await encryptionService.encryptConfig(body.configuration)
+
+    const connection = {
+      ...body,
+      user_id: session.user.id,
+      configuration: encryptedConfig // Speichere verschlüsselte Konfiguration
+    }
+
+    // Speichere die Verbindung
     const { data, error } = await supabase
       .from('wallbox_connections')
       .insert(connection)
