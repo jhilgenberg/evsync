@@ -3,7 +3,7 @@ export class EncryptionService {
   private decoder = new TextDecoder()
 
   constructor() {
-    const encryptionKey = process.env.NEXT_PUBLIC_ENCRYPTION_KEY
+    const encryptionKey = process.env.ENCRYPTION_KEY
     if (!encryptionKey) {
       throw new Error('ENCRYPTION_KEY nicht konfiguriert')
     }
@@ -91,7 +91,7 @@ export class EncryptionService {
   private async getKey(): Promise<CryptoKey> {
     const keyMaterial = await crypto.subtle.importKey(
       'raw',
-      this.encoder.encode(process.env.NEXT_PUBLIC_ENCRYPTION_KEY),
+      this.encoder.encode(process.env.ENCRYPTION_KEY),
       { name: 'PBKDF2' },
       false,
       ['deriveBits', 'deriveKey']
