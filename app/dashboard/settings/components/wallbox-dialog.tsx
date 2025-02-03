@@ -9,6 +9,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { decrypt } from '@/services/encryption'
 import { WallboxConnection } from '@/types/wallbox'
 
+interface WallboxFormData {
+  id: string
+  provider_id: string
+  name: string
+  configuration: {
+    name: string
+    api_key: string
+    charger_id: string
+    username: string
+    password: string
+  }
+}
+
 const defaultFormData = {
   id: '',
   provider_id: '',
@@ -25,7 +38,7 @@ const defaultFormData = {
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSave: (wallbox: any) => Promise<void>
+  onSave: (wallbox: WallboxFormData) => Promise<void>
   currentWallbox?: WallboxConnection
 }
 

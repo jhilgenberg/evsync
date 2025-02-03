@@ -19,7 +19,6 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const encryptionService = new EncryptionService()
 
     // Teste die Verbindung mit Original-Konfiguration
     try {
