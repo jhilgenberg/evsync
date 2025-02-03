@@ -28,7 +28,10 @@ export async function PUT(
         id: params.id,
         provider_id: body.provider_id,
         name: body.name,
-        configuration: body.configuration
+        configuration: body.configuration,
+        user_id: session.user.id,
+        created_at: new Date().toISOString(),
+        last_sync: new Date().toISOString()
       });
       await service.getStatus();
     } catch (error: unknown) {
