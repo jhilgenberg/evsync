@@ -5,7 +5,17 @@ import { formatInTimeZone } from 'date-fns-tz'
 import { de } from 'date-fns/locale'
 import { Zap } from 'lucide-react'
 
-export const columns: ColumnDef<any>[] = [
+export type ChargingSession = {
+  id: string
+  start_time: string
+  duration_minutes: number
+  energy_kwh: number
+  cost: number
+  end_time?: string | null
+  energy_rate?: number
+}
+
+export const columns: ColumnDef<ChargingSession>[] = [
   {
     accessorKey: "start_time",
     header: "Datum",

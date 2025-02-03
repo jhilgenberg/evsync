@@ -66,7 +66,7 @@ export async function POST(
       : new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000) // 30 Tage zurück
 
     // Hole die Ladevorgänge von der Wallbox
-    const service = createWallboxService(connection)
+    const service = await createWallboxService(connection)
     const sessions = await service.getChargingSessions(from, to)
 
     // Speichere die Ladevorgänge in der Datenbank

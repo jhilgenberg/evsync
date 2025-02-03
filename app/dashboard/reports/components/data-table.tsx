@@ -19,11 +19,20 @@ import {
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
+  selectedRows?: Set<string>
+  onRowSelectionChange?: (id: string) => void
+  areAllSelected?: boolean
 }
 
 export function DataTable<TData, TValue>({
   columns,
   data,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  selectedRows,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  onRowSelectionChange,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  areAllSelected
 }: DataTableProps<TData, TValue>) {
   const table = useReactTable({
     data,

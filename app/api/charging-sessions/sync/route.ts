@@ -15,7 +15,7 @@ interface ChargingSession {
 
 export async function POST() {
   try {
-    const cookieStore = await cookies()
+    const cookieStore = cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
     const { data: { session } } = await supabase.auth.getSession()
 
@@ -27,12 +27,18 @@ export async function POST() {
     }
 
     // Hole alle Wallboxen des Benutzers
-    const { data: connections, error: connectionsError } = await supabase
+    const { data: wallboxes, error: wallboxError } = await supabase
       .from('wallbox_connections')
       .select('*')
       .eq('user_id', session.user.id)
 
-    if (connectionsError) throw connectionsError
+    if (wallboxError) throw wallboxError
+    if (!wallboxes || wallboxes.length === 0) {
+      return NextResponse.json({ 
+        success: true,
+        message: 'Keine Wallboxen gefunden'
+      })
+    }
 
     // Hole die Tarife des Benutzers
     const { data: tariffs, error: tariffsError } = await supabase
@@ -47,9 +53,10 @@ export async function POST() {
     let totalSessions = 0
 
     // Synchronisiere jede Wallbox
-    for (const connection of connections) {
+    for (const wallbox of wallboxes) {
       try {
-        const service = createWallboxService(connection)
+        // Erstelle den Service und warte auf die Initialisierung
+        const service = await createWallboxService(wallbox)
         
         // Hole die Ladevorgänge
         const sessions = await service.getChargingSessions()
@@ -66,8 +73,8 @@ export async function POST() {
           )
 
           return {
-            wallbox_id: connection.id,
-            user_id: connection.user_id,
+            wallbox_id: wallbox.id,
+            user_id: wallbox.user_id,
             session_id: session.id,
             start_time: startTime.toISOString(),
             end_time: endTime.toISOString(),
@@ -97,11 +104,11 @@ export async function POST() {
           await supabase
             .from('wallbox_connections')
             .update({ last_sync: new Date().toISOString() })
-            .eq('id', connection.id)
+            .eq('id', wallbox.id)
         }
 
       } catch (error) {
-        console.error(`Sync error for wallbox ${connection.id}:`, error)
+        console.error(`Fehler bei Wallbox ${wallbox.id}:`, error)
       }
     }
 

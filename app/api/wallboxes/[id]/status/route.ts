@@ -19,21 +19,14 @@ export async function GET(
       )
     }
 
-    // Hole die Wallbox-Verbindung
-    const { data: connection, error } = await supabase
+    const { id } = params
+
+    const { data: connection } = await supabase
       .from('wallbox_connections')
       .select('*')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
-    if (error || !connection) {
-      return NextResponse.json(
-        { error: 'Wallbox nicht gefunden' },
-        { status: 404 }
-      )
-    }
-
-    // Prüfe ob die Wallbox dem Benutzer gehört
     if (connection.user_id !== session.user.id) {
       return NextResponse.json(
         { error: 'Nicht autorisiert' },
@@ -41,20 +34,20 @@ export async function GET(
       )
     }
 
-    const service = createWallboxService(connection)
+    const service = await createWallboxService(connection)
     const status = await service.getStatus()
 
     // Aktualisiere last_sync in der Datenbank
     await supabase
       .from('wallbox_connections')
       .update({ last_sync: new Date().toISOString() })
-      .eq('id', params.id)
+      .eq('id', id)
 
     return NextResponse.json(status)
   } catch (error) {
-    console.error('Wallbox Status Fehler:', error)
+    console.error('Status error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unbekannter Fehler' },
+      { error: 'Status konnte nicht abgerufen werden' },
       { status: 500 }
     )
   }

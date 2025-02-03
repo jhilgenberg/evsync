@@ -53,19 +53,7 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { DataTable } from './components/data-table'
-import { columns } from './components/columns'
-
-type ChargingSession = {
-  id: string
-  wallbox_id: string
-  start_time: string
-  end_time: string
-  energy_kwh: number
-  cost: number
-  tariff_name: string
-  energy_rate: number
-  car_id: string | null
-}
+import { columns, ChargingSession } from './components/columns'
 
 type DailyData = {
   date: string;
@@ -99,7 +87,7 @@ export default function ReportsPage() {
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'))
   const [isCustomRange, setIsCustomRange] = useState(false)
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false)
-  const [data, setData] = useState<any[]>([])
+  const [data, setData] = useState<ChargingSession[]>([])
 
   const loadSessions = useCallback(async () => {
     try {
@@ -109,7 +97,7 @@ export default function ReportsPage() {
       const { sessions } = await response.json()
 
       // Sicherstellen, dass numerische Werte korrekt formatiert sind
-      const formattedSessions = sessions.map((session: any) => ({
+      const formattedSessions = sessions.map((session: ChargingSession) => ({
         ...session,
         energy_kwh: session.energy_kwh ? Number(session.energy_kwh).toFixed(2) : '0.00',
         cost: session.cost ? Number(session.cost).toFixed(2) : '0.00',
@@ -469,35 +457,6 @@ export default function ReportsPage() {
     });
   };
 
-  const handleExport = async () => {
-    try {
-      const response = await fetch('/api/reports/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessions: data })
-      })
-
-      if (!response.ok) throw new Error('Export fehlgeschlagen')
-
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'ladevorgaenge.xlsx'
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-    } catch (error) {
-      console.error('Export error:', error)
-      toast({
-        variant: 'destructive',
-        title: 'Fehler',
-        description: 'Der Export konnte nicht erstellt werden.'
-      })
-    }
-  }
-
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
       {/* Hauptnavigation */}
@@ -610,7 +569,7 @@ export default function ReportsPage() {
                   <Button 
                     variant="outline" 
                     className="w-full"
-                    onClick={handleExport}
+                    onClick={generatePDF}
                   >
                     <FileText className="mr-2 h-4 w-4" />
                     Als PDF exportieren
@@ -783,7 +742,13 @@ export default function ReportsPage() {
           ) : (
             <>
               <div className="rounded-md border">
-                <DataTable columns={columns} data={data} />
+                <DataTable 
+                  columns={columns} 
+                  data={data}
+                  selectedRows={selectedSessions}
+                  onRowSelectionChange={toggleSessionSelection}
+                  areAllSelected={areAllVisibleSelected}
+                />
               </div>
 
               <div className="flex items-center justify-between mt-4">
