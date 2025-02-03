@@ -53,7 +53,7 @@ import {
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
 import { DataTable } from './components/data-table'
-import { columns, ChargingSession } from './components/columns'
+import { ChargingSession, createColumns } from './components/columns'
 
 type DailyData = {
   date: string;
@@ -89,34 +89,119 @@ export default function ReportsPage() {
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false)
   const [data, setData] = useState<ChargingSession[]>([])
 
+  // Filtere die Sessions basierend auf dem ausgewählten Zeitraum
+  const filteredSessions = useMemo(() => {
+    return sessions.filter(session => {
+      const sessionDate = new Date(session.start_time)
+      const from = isCustomRange 
+        ? new Date(dateFrom) 
+        : startOfMonth(new Date(selectedMonth))
+      const to = isCustomRange
+        ? new Date(dateTo)
+        : endOfMonth(new Date(selectedMonth))
+      
+      // Setze die Uhrzeiten für korrekten Vergleich
+      from.setHours(0, 0, 0, 0)
+      to.setHours(23, 59, 59, 999)
+      
+      return sessionDate >= from && sessionDate <= to
+    })
+  }, [sessions, dateFrom, dateTo, selectedMonth, isCustomRange])
+
+  // Paginierung auf die gefilterten Daten anwenden
+  const paginatedSessions = useMemo(() => {
+    const start = currentPage * pageSize
+    const end = start + pageSize
+    return filteredSessions.slice(start, end)
+  }, [filteredSessions, currentPage, pageSize])
+
+  // Berechne die Gesamtanzahl der Seiten
+  const totalPages = Math.ceil(filteredSessions.length / pageSize)
+
+  // Setze die gefilterten und paginierten Daten für die DataTable
+  useEffect(() => {
+    setData(paginatedSessions)
+  }, [paginatedSessions])
+
+  // Aktualisiere die Seitenzahl wenn sich Filter ändern
+  useEffect(() => {
+    setCurrentPage(0)
+  }, [dateFrom, dateTo, selectedMonth, isCustomRange, pageSize])
+
+  // Statistiken basierend auf gefilterten Daten berechnen
+  const stats = useMemo(() => {
+    return filteredSessions.reduce((acc, session) => ({
+      totalEnergy: acc.totalEnergy + Number(session.energy_kwh),
+      totalCost: acc.totalCost + Number(session.cost),
+      avgCost: 0,
+      sessionCount: acc.sessionCount + 1
+    }), {
+      totalEnergy: 0,
+      totalCost: 0,
+      avgCost: 0,
+      sessionCount: 0
+    })
+  }, [filteredSessions])
+
+  // Chart-Daten basierend auf gefilterten Daten
+  const chartData = useMemo(() => {
+    const dailyData: Record<string, DailyData> = {}
+
+    filteredSessions.forEach(session => {
+      const date = format(new Date(session.start_time), 'yyyy-MM-dd')
+      
+      if (!dailyData[date]) {
+        dailyData[date] = {
+          date,
+          energy: 0,
+          cost: 0,
+          sessions: 0
+        }
+      }
+
+      dailyData[date].energy += Number(session.energy_kwh)
+      dailyData[date].cost += Number(session.cost)
+      dailyData[date].sessions += 1
+    })
+
+    return Object.values(dailyData).sort((a, b) => a.date.localeCompare(b.date))
+  }, [filteredSessions])
+
   const loadSessions = useCallback(async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/charging-sessions${selectedCar && selectedCar !== NO_SELECTION ? `?car_id=${selectedCar}` : ''}`)
+      console.log('Fetching sessions...')
+      
+      const url = `/api/charging-sessions${selectedCar && selectedCar !== NO_SELECTION ? `?car_id=${selectedCar}` : ''}`
+      console.log('Request URL:', url)
+      
+      const response = await fetch(url)
+      console.log('Response status:', response.status)
+      
       if (!response.ok) throw new Error('Laden fehlgeschlagen')
-      const { sessions } = await response.json()
+      
+      const data = await response.json()
+      console.log('API Response:', data)
 
-      // Sicherstellen, dass numerische Werte korrekt formatiert sind
-      const formattedSessions = sessions.map((session: ChargingSession) => ({
-        ...session,
-        energy_kwh: session.energy_kwh ? Number(session.energy_kwh).toFixed(2) : '0.00',
-        cost: session.cost ? Number(session.cost).toFixed(2) : '0.00',
-        energy_rate: session.energy_rate ? Number(session.energy_rate).toFixed(2) : '0.00',
-        duration_minutes: session.duration_minutes || 0,
-        // Formatiere Datum für die Anzeige
-        start_time: new Date(session.start_time).toLocaleString(),
-        end_time: session.end_time ? new Date(session.end_time).toLocaleString() : 'Läuft noch',
-      }))
+      if (!data.sessions) {
+        console.log('No sessions in response')
+        setSessions([])
+        setData([])
+        return
+      }
 
-      setSessions(formattedSessions)
-      setData(formattedSessions)
+      console.log('Setting sessions:', data.sessions.length)
+      setSessions(data.sessions)
+      setData(data.sessions)
     } catch (error: unknown) {
+      console.error('Fehler beim Laden der Ladevorgänge:', error)
       toast({
         variant: "destructive",
         title: "Fehler",
         description: "Ladevorgänge konnten nicht geladen werden",
       })
-      console.error(error)
+      setSessions([])
+      setData([])
     } finally {
       setLoading(false)
     }
@@ -200,56 +285,8 @@ export default function ReportsPage() {
     checkAndSync()
   }, [handleSync, isSyncing])
 
-  // Sortiere und filtere die Sessions
-  const sortedSessions = useMemo(() => {
-    // Filtere zuerst nach dem ausgewählten Zeitraum
-    const filteredSessions = sessions.filter(session => {
-      const sessionDate = new Date(session.start_time)
-      const start = new Date(dateFrom)
-      const end = new Date(dateTo)
-      return sessionDate >= start && sessionDate <= end
-    })
-
-    // Dann sortiere die gefilterten Sessions
-    return [...filteredSessions].sort((a, b) => 
-      new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
-    )
-  }, [sessions, dateFrom, dateTo])
-
-  // Gruppiere die Daten nach Tagen für die Diagramme
-  const dailyData = useMemo(() => {
-    return sortedSessions.reduce<DailyData[]>((acc, session) => {
-      const date = startOfDay(new Date(session.start_time));
-      const dateStr = format(date, 'yyyy-MM-dd');
-      
-      const existingDay = acc.find(d => d.date === dateStr);
-      if (existingDay) {
-        existingDay.energy += session.energy_kwh;
-        existingDay.cost += session.cost;
-        existingDay.sessions += 1;
-      } else {
-        acc.push({
-          date: dateStr,
-          energy: session.energy_kwh,
-          cost: session.cost,
-          sessions: 1,
-        });
-      }
-      return acc;
-    }, []).sort((a, b) => a.date.localeCompare(b.date));
-  }, [sortedSessions])
-
-  // Berechne die Gesamtanzahl der Seiten basierend auf den gefilterten Sessions
-  const totalPages = Math.ceil(sortedSessions.length / pageSize)
-
-  // Hole die Sessions für die aktuelle Seite
-  const currentSessions = sortedSessions.slice(
-    currentPage * pageSize,
-    (currentPage + 1) * pageSize
-  )
-
   // Prüfe ob alle sichtbaren Sessions ausgewählt sind
-  const areAllVisibleSelected = currentSessions.every(session => 
+  const areAllVisibleSelected = paginatedSessions.every(session => 
     selectedSessions.has(session.id)
   )
 
@@ -384,66 +421,41 @@ export default function ReportsPage() {
     )
   }
 
-  const handleAssignCar = async (sessionIds: string[], carId: string) => {
-    // Optimistisches Update der UI
-    const updatedSessions = sessions.map(session => {
-      if (sessionIds.includes(session.id)) {
-        return {
-          ...session,
-          car_id: carId === NO_SELECTION ? null : carId
-        };
-      }
-      return session;
-    }) as ChargingSession[];
-    
-    // Sofort UI aktualisieren
-    setSessions(updatedSessions);
-    
-    // Optional: Auswahl zurücksetzen
-    setSelectedSessions(new Set());
-    
+  const assignCar = async (sessionIds: string[], carId: string) => {
     try {
-      const response = await fetch('/api/charging-sessions/bulk-assign', {
-        method: 'PATCH',
+      const response = await fetch('/api/charging-sessions/assign-car', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ 
-          session_ids: sessionIds, 
-          car_id: carId === NO_SELECTION ? null : carId
-        }),
-      });
+        body: JSON.stringify({ sessionIds, carId }),
+      })
 
-      if (!response.ok) {
-        // Bei Fehler zurück zu original Zustand
-        setSessions(sessions);
-        const data = await response.json();
-        throw new Error(data.error);
-      }
+      if (!response.ok) throw new Error('Zuweisung fehlgeschlagen')
 
-      // Aktualisiere die UI mit den Daten vom Server
-      const data = await response.json();
-      
-      // Aktualisiere nur die geänderten Sessions
-      setSessions(prev => prev.map(session => {
-        const updatedSession = data.find((d: ChargingSession) => d.id === session.id);
-        return updatedSession || session;
-      }));
+      // Aktualisiere nur die betroffenen Sessions im State
+      setSessions(prevSessions => 
+        prevSessions.map(session => 
+          sessionIds.includes(session.id) 
+            ? { ...session, car_id: carId }
+            : session
+        )
+      )
 
       toast({
         title: "Erfolg",
-        description: "Auto wurde zugewiesen",
-      });
+        description: "Auto wurde zugewiesen"
+      })
     } catch (error) {
-      // UI-State wurde bereits zurückgesetzt
+      console.error('Fehler bei der Zuweisung:', error)
       toast({
         variant: "destructive",
         title: "Fehler",
-        description: "Auto konnte nicht zugewiesen werden",
-      });
-      console.error(error);
+        description: "Auto konnte nicht zugewiesen werden"
+      })
+      throw error
     }
-  };
+  }
 
   const toggleSessionSelection = (sessionId: string) => {
     setSelectedSessions((prev) => {
@@ -616,7 +628,7 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {statistics.energy.value.toFixed(2)} kWh
+              {stats.totalEnergy.toFixed(2)} kWh
             </div>
             <TrendIndicator change={statistics.energy.change} />
           </CardContent>
@@ -631,7 +643,7 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {statistics.cost.value.toFixed(2)} €
+              {stats.totalCost.toFixed(2)} €
             </div>
             <TrendIndicator change={statistics.cost.change} />
           </CardContent>
@@ -662,7 +674,7 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent className="h-[500px]">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={dailyData}>
+              <ComposedChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis 
                   dataKey="date"
@@ -743,11 +755,14 @@ export default function ReportsPage() {
             <>
               <div className="rounded-md border">
                 <DataTable 
-                  columns={columns} 
+                  columns={createColumns(
+                    cars,
+                    assignCar
+                  )} 
                   data={data}
-                  selectedRows={selectedSessions}
-                  onRowSelectionChange={toggleSessionSelection}
-                  areAllSelected={areAllVisibleSelected}
+                  onRowSelectionChange={(selectedRows) => {
+                    setSelectedSessions(new Set(selectedRows))
+                  }}
                 />
               </div>
 
@@ -821,10 +836,9 @@ export default function ReportsPage() {
       <AssignCarDialog
         open={isAssignDialogOpen}
         onOpenChange={setIsAssignDialogOpen}
+        sessionIds={Array.from(selectedSessions)}
         cars={cars}
-        onAssign={async (carId) => {
-          await handleAssignCar(Array.from(selectedSessions), carId);
-        }}
+        onAssign={assignCar}
       />
     </div>
   )

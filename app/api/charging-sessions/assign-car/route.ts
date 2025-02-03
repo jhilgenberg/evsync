@@ -2,7 +2,7 @@ import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   try {
     const cookieStore = cookies()
     const supabase = createRouteHandlerClient({ cookies: () => cookieStore })
@@ -15,30 +15,21 @@ export async function GET(request: Request) {
       )
     }
 
-    const { searchParams } = new URL(request.url)
-    const carId = searchParams.get('car_id')
+    const { sessionIds, carId } = await request.json()
 
-    let query = supabase
+    const { error } = await supabase
       .from('charging_sessions')
-      .select('*')
+      .update({ car_id: carId })
+      .in('id', sessionIds)
       .eq('user_id', session.user.id)
-      .order('start_time', { ascending: false })
-
-    if (carId) {
-      query = query.eq('car_id', carId)
-    }
-
-    const { data: sessions, error } = await query
 
     if (error) throw error
 
-    console.log('API Response - Sessions:', sessions?.length || 0)
-
-    return NextResponse.json({ sessions: sessions || [] })
-  } catch (error: unknown) {
-    console.error('Error fetching sessions:', error)
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error assigning car:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unbekannter Fehler' },
+      { error: 'Fehler bei der Zuweisung' },
       { status: 500 }
     )
   }

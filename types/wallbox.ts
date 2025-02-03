@@ -77,9 +77,11 @@ export interface ChargingSession {
     id_chip_name?: string;
 }
 
-export interface Car {
-    id: string;
-    make: string;
-    model: string;
-    license_plate: string;
+export type Car = {
+  id: string
+  name: string
+  make: string
+  model: string
+  license_plate: string
+  user_id: string
 } 
