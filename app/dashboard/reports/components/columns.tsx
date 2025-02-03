@@ -3,9 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table"
 import { formatInTimeZone } from 'date-fns-tz'
 import { de } from 'date-fns/locale'
-import { Zap, CarFront, MoreHorizontal } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Zap } from 'lucide-react'
 import { Car } from '@/types/wallbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -23,7 +21,7 @@ export type ChargingSession = {
   tariff_name?: string
   energy_rate?: number
   car_id?: string | null
-  raw_data?: any
+  raw_data?: Record<string, unknown>
 }
 
 export const createColumns = (

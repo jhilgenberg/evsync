@@ -16,10 +16,12 @@ type Props = {
 
 export function CarDialog({ open, onOpenChange, onSave, currentCar }: Props) {
   const [formData, setFormData] = useState<Car>({
-    id: currentCar?.id || '', // ID des Autos
+    id: currentCar?.id || '',
     make: currentCar?.make || '',
     model: currentCar?.model || '',
     license_plate: currentCar?.license_plate || '',
+    name: `${currentCar?.make || ''} ${currentCar?.model || ''}`.trim() || '',
+    user_id: currentCar?.user_id || '' // Dies sollte vom Backend gesetzt werden
   });
 
   useEffect(() => {
@@ -29,6 +31,8 @@ export function CarDialog({ open, onOpenChange, onSave, currentCar }: Props) {
         make: currentCar.make,
         model: currentCar.model,
         license_plate: currentCar.license_plate,
+        name: `${currentCar.make} ${currentCar.model}`.trim(),
+        user_id: currentCar.user_id
       });
     }
   }, [currentCar]);

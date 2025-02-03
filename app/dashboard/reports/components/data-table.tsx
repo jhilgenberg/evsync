@@ -17,7 +17,12 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-interface DataTableProps<TData, TValue> {
+interface RowData {
+  id: string;
+  [key: string]: unknown;
+}
+
+interface DataTableProps<TData extends RowData, TValue> {
   columns: ColumnDef<TData, TValue>[]
   data: TData[]
   onRowSelectionChange: (selectedRows: string[]) => void
@@ -28,24 +33,24 @@ const tableStyles = {
   selectedRow: "bg-muted/50"
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends RowData, TValue>({
   columns,
   data,
   onRowSelectionChange,
 }: DataTableProps<TData, TValue>) {
   const [rowSelection, setRowSelection] = useState({})
 
-  const handleRowSelectionChange = useCallback((updater: any) => {
+  const handleRowSelectionChange = useCallback((updater: unknown) => {
     let newSelection = {}
     if (typeof updater === 'function') {
       newSelection = updater(rowSelection)
     } else {
-      newSelection = updater
+      newSelection = updater as Record<string, boolean>
     }
     setRowSelection(newSelection)
     
     const selectedRows = Object.keys(newSelection).map(
-      (idx) => (data[parseInt(idx)] as any).id
+      (idx) => data[parseInt(idx)].id
     )
     onRowSelectionChange(selectedRows)
   }, [data, onRowSelectionChange, rowSelection])
@@ -68,7 +73,7 @@ export function DataTable<TData, TValue>({
     if (hasSelection) {
       setRowSelection({})
     }
-  }, [data])
+  }, [data, rowSelection])
 
   return (
     <div>

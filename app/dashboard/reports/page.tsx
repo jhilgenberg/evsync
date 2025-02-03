@@ -37,7 +37,7 @@ import {
   ComposedChart,
   Legend,
 } from 'recharts'
-import { format, startOfDay, parseISO, startOfMonth, endOfMonth, subMonths } from 'date-fns'
+import { format, parseISO, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { de } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
 import { ScheduleReportDialog } from './components/schedule-report-dialog'
@@ -285,11 +285,6 @@ export default function ReportsPage() {
     checkAndSync()
   }, [handleSync, isSyncing])
 
-  // Prüfe ob alle sichtbaren Sessions ausgewählt sind
-  const areAllVisibleSelected = paginatedSessions.every(session => 
-    selectedSessions.has(session.id)
-  )
-
   // Navigations-Funktionen
   const nextPage = () => setCurrentPage(prev => Math.min(prev + 1, totalPages - 1))
   const prevPage = () => setCurrentPage(prev => Math.max(prev - 1, 0))
@@ -456,18 +451,6 @@ export default function ReportsPage() {
       throw error
     }
   }
-
-  const toggleSessionSelection = (sessionId: string) => {
-    setSelectedSessions((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(sessionId)) {
-        newSet.delete(sessionId);
-      } else {
-        newSet.add(sessionId);
-      }
-      return newSet;
-    });
-  };
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">

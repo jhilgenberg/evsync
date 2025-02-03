@@ -26,41 +26,11 @@ export function AssignCarDialog({
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
 
-  // Reset selectedCar wenn sich das Modal öffnet
   useEffect(() => {
     if (open) {
       setSelectedCar('')
     }
   }, [open])
-
-  const handleAssign = async () => {
-    if (!selectedCar) {
-      toast({
-        variant: 'destructive',
-        title: 'Fehler',
-        description: 'Bitte wählen Sie ein Auto aus'
-      })
-      return
-    }
-
-    try {
-      setIsLoading(true)
-      await onAssign(sessionIds, selectedCar)
-      onOpenChange(false)
-      toast({
-        title: 'Erfolg',
-        description: 'Auto wurde zugewiesen'
-      })
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Fehler',
-        description: 'Auto konnte nicht zugewiesen werden'
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -90,9 +60,32 @@ export function AssignCarDialog({
               Abbrechen
             </Button>
             <Button
-              onClick={() => {
-                if (selectedCar) {
-                  onAssign(sessionIds, selectedCar)
+              onClick={async () => {
+                if (!selectedCar) {
+                  toast({
+                    variant: 'destructive',
+                    title: 'Fehler',
+                    description: 'Bitte wählen Sie ein Auto aus'
+                  })
+                  return
+                }
+
+                try {
+                  setIsLoading(true)
+                  await onAssign(sessionIds, selectedCar)
+                  onOpenChange(false)
+                  toast({
+                    title: 'Erfolg',
+                    description: 'Auto wurde zugewiesen'
+                  })
+                } catch {
+                  toast({
+                    variant: 'destructive',
+                    title: 'Fehler',
+                    description: 'Auto konnte nicht zugewiesen werden'
+                  })
+                } finally {
+                  setIsLoading(false)
                 }
               }}
               disabled={!selectedCar || isLoading}

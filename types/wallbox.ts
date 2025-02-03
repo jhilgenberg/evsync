@@ -79,9 +79,9 @@ export interface ChargingSession {
 
 export type Car = {
   id: string
-  name: string
   make: string
   model: string
   license_plate: string
   user_id: string
+  name?: string  // Optional machen
 } 
