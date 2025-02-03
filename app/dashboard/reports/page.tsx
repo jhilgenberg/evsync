@@ -19,17 +19,8 @@ import {
   TrendingUp,
   TrendingDown,
   Settings,
-  ChartArea,
-  Download
+  ChartArea
 } from 'lucide-react'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -46,9 +37,8 @@ import {
   ComposedChart,
   Legend,
 } from 'recharts'
-import { format, differenceInMinutes, startOfDay, parseISO, startOfMonth, endOfMonth, subMonths } from 'date-fns'
+import { format, startOfDay, parseISO, startOfMonth, endOfMonth, subMonths } from 'date-fns'
 import { de } from 'date-fns/locale'
-import { formatInTimeZone } from 'date-fns-tz'
 import { cn } from '@/lib/utils'
 import { ScheduleReportDialog } from './components/schedule-report-dialog'
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
