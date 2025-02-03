@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       await service.getStatus()
     } catch (error: unknown) {
       return NextResponse.json(
-        { error: 'Verbindung konnte nicht hergestellt werden' },
+        { error: 'Verbindung konnte nicht hergestellt werden', details: error },
         { status: 400 }
       )
     }
