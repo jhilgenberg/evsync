@@ -19,7 +19,8 @@ import {
   TrendingUp,
   TrendingDown,
   Settings,
-  ChartArea
+  ChartArea,
+  Download
 } from 'lucide-react'
 import {
   Table,
@@ -61,6 +62,8 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Separator } from "@/components/ui/separator"
+import { DataTable } from './components/data-table'
+import { columns } from './components/columns'
 
 type ChargingSession = {
   id: string
@@ -106,14 +109,29 @@ export default function ReportsPage() {
   const [selectedMonth, setSelectedMonth] = useState(() => format(new Date(), 'yyyy-MM'))
   const [isCustomRange, setIsCustomRange] = useState(false)
   const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false)
+  const [data, setData] = useState<any[]>([])
 
   const loadSessions = useCallback(async () => {
     try {
       setLoading(true)
       const response = await fetch(`/api/charging-sessions${selectedCar && selectedCar !== NO_SELECTION ? `?car_id=${selectedCar}` : ''}`)
       if (!response.ok) throw new Error('Laden fehlgeschlagen')
-      const data = await response.json()
-      setSessions(data)
+      const { sessions } = await response.json()
+
+      // Sicherstellen, dass numerische Werte korrekt formatiert sind
+      const formattedSessions = sessions.map((session: any) => ({
+        ...session,
+        energy_kwh: session.energy_kwh ? Number(session.energy_kwh).toFixed(2) : '0.00',
+        cost: session.cost ? Number(session.cost).toFixed(2) : '0.00',
+        energy_rate: session.energy_rate ? Number(session.energy_rate).toFixed(2) : '0.00',
+        duration_minutes: session.duration_minutes || 0,
+        // Formatiere Datum für die Anzeige
+        start_time: new Date(session.start_time).toLocaleString(),
+        end_time: session.end_time ? new Date(session.end_time).toLocaleString() : 'Läuft noch',
+      }))
+
+      setSessions(formattedSessions)
+      setData(formattedSessions)
     } catch (error: unknown) {
       toast({
         variant: "destructive",
@@ -461,6 +479,35 @@ export default function ReportsPage() {
     });
   };
 
+  const handleExport = async () => {
+    try {
+      const response = await fetch('/api/reports/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessions: data })
+      })
+
+      if (!response.ok) throw new Error('Export fehlgeschlagen')
+
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'ladevorgaenge.xlsx'
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Export error:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Fehler',
+        description: 'Der Export konnte nicht erstellt werden.'
+      })
+    }
+  }
+
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 space-y-8">
       {/* Hauptnavigation */}
@@ -573,7 +620,7 @@ export default function ReportsPage() {
                   <Button 
                     variant="outline" 
                     className="w-full"
-                    onClick={generatePDF}
+                    onClick={handleExport}
                   >
                     <FileText className="mr-2 h-4 w-4" />
                     Als PDF exportieren
@@ -746,93 +793,7 @@ export default function ReportsPage() {
           ) : (
             <>
               <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead>
-                        <input
-                          type="checkbox"
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedSessions(new Set(currentSessions.map((s) => s.id)));
-                            } else {
-                              setSelectedSessions(new Set());
-                            }
-                          }}
-                          checked={areAllVisibleSelected && currentSessions.length > 0}
-                        />
-                      </TableHead>
-                      <TableHead>Datum</TableHead>
-                      <TableHead>Dauer</TableHead>
-                      <TableHead>Energie</TableHead>
-                      <TableHead>Tarif</TableHead>
-                      <TableHead>Auto</TableHead>
-                      <TableHead className="text-right">Kosten</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {currentSessions.map((session) => {
-                      const startDate = parseISO(session.start_time)
-                      const endDate = parseISO(session.end_time)
-                      const duration = differenceInMinutes(endDate, startDate)
-                      const hours = Math.floor(duration / 60)
-                      const minutes = duration % 60
-
-                      return (
-                        <TableRow key={session.id} className="hover:bg-muted/50">
-                          <TableCell>
-                            <input
-                              type="checkbox"
-                              checked={selectedSessions.has(session.id)}
-                              onChange={() => toggleSessionSelection(session.id)}
-                            />
-                          </TableCell>
-                          <TableCell className="font-medium">
-                            {formatInTimeZone(startDate, 'Europe/Berlin', 'Pp', { locale: de })}
-                          </TableCell>
-                          <TableCell>
-                            {hours > 0 ? `${hours}h ` : ''}{minutes}min
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center">
-                              <Zap className="mr-2 h-4 w-4 text-blue-500" />
-                              {session.energy_kwh.toFixed(2)} kWh
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span>{session.tariff_name}</span>
-                              <span className="text-sm text-muted-foreground">
-                                {session.energy_rate.toFixed(2)} ct/kWh
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Select
-                              value={session.car_id || NO_SELECTION}
-                              onValueChange={(value) => handleAssignCar([session.id], value === NO_SELECTION ? '' : value)}
-                            >
-                              <SelectTrigger className="w-[200px]">
-                                <SelectValue placeholder="Kein Auto" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value={NO_SELECTION}>Kein Auto</SelectItem>
-                                {cars.map((car) => (
-                                  <SelectItem key={car.id} value={car.id}>
-                                    {car.make} {car.model}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {session.cost.toFixed(2)} €
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
-                  </TableBody>
-                </Table>
+                <DataTable columns={columns} data={data} />
               </div>
 
               <div className="flex items-center justify-between mt-4">
