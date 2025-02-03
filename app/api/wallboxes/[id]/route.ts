@@ -25,7 +25,9 @@ export async function PUT(
     // Teste die Verbindung mit Original-Konfiguration
     try {
       const service = await createWallboxService({
-        ...body,
+        id: params.id,
+        provider_id: body.provider_id,
+        name: body.name,
         configuration: body.configuration
       });
       await service.getStatus();
@@ -36,26 +38,23 @@ export async function PUT(
       );
     }
 
-    // Verschlüssele die gesamte Konfiguration
+    // Verschlüssele die Konfiguration
     const encryptedConfig = encrypt(JSON.stringify(body.configuration));
 
     const { data, error } = await supabase
       .from('wallbox_connections')
       .update({
         name: body.name,
-        configuration: encryptedConfig,
-        last_sync: body.last_sync
+        configuration: encryptedConfig
       })
       .eq('id', params.id)
-      .eq('user_id', session.user.id);
+      .eq('user_id', session.user.id)
+      .select()
+      .single();
 
     if (error) throw error;
 
-    // Dekryptiere die Konfiguration für die Antwort
-    return NextResponse.json({
-      ...data,
-      configuration: body.configuration // Sende die ursprüngliche Konfiguration zurück
-    });
+    return NextResponse.json(data);
   } catch (error) {
     console.error('Error updating wallbox:', error);
     return NextResponse.json(
