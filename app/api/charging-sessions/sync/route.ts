@@ -55,57 +55,57 @@ export async function POST() {
     // Synchronisiere jede Wallbox
     for (const wallbox of wallboxes) {
       try {
-        // Erstelle den Service und warte auf die Initialisierung
         const service = await createWallboxService(wallbox)
-        
-        // Hole die Ladevorgänge
         const sessions = await service.getChargingSessions()
+        
+        // Verarbeite die Sessions in Batches von 50
+        const BATCH_SIZE = 50
+        for (let i = 0; i < sessions.length; i += BATCH_SIZE) {
+          const sessionsBatch = sessions.slice(i, i + BATCH_SIZE)
+          
+          const sessionsWithCosts = sessionsBatch.map((session: ChargingSession) => {
+            const startTime = new Date(session.start_time)
+            const endTime = session.end_time ? new Date(session.end_time) : new Date()
+            const energyKwh = session.energy
 
-        // Berechne die Kosten für jeden Ladevorgang
-        const sessionsWithCosts = sessions.map((session: ChargingSession) => {
-          const startTime = new Date(session.start_time)
-          const endTime = session.end_time ? new Date(session.end_time) : new Date()
-          const energyKwh = session.energy // Bereits in kWh von go-e
+            const { cost, tariff } = costCalculator.calculateSessionCost(
+              startTime,
+              energyKwh
+            )
 
-          const { cost, tariff } = costCalculator.calculateSessionCost(
-            startTime,
-            energyKwh
-          )
+            return {
+              wallbox_id: wallbox.id,
+              user_id: wallbox.user_id,
+              session_id: session.id,
+              start_time: startTime.toISOString(),
+              end_time: endTime.toISOString(),
+              energy_kwh: energyKwh,
+              cost: Number(cost.toFixed(2)),
+              tariff_id: tariff?.id || null,
+              tariff_name: tariff?.name || null,
+              energy_rate: tariff?.energy_rate || null,
+              raw_data: session
+            }
+          })
 
-          return {
-            wallbox_id: wallbox.id,
-            user_id: wallbox.user_id,
-            session_id: session.id,
-            start_time: startTime.toISOString(),
-            end_time: endTime.toISOString(),
-            energy_kwh: energyKwh,
-            cost: Number(cost.toFixed(2)),
-            tariff_id: tariff?.id || null,
-            tariff_name: tariff?.name || null,
-            energy_rate: tariff?.energy_rate || null,
-            raw_data: session
+          if (sessionsWithCosts.length > 0) {
+            const { error: insertError } = await supabase
+              .from('charging_sessions')
+              .upsert(sessionsWithCosts, {
+                onConflict: 'wallbox_id,session_id',
+                ignoreDuplicates: false
+              })
+
+            if (insertError) throw insertError
+            totalSessions += sessionsWithCosts.length
           }
-        })
-
-        if (sessionsWithCosts.length > 0) {
-          // Speichere die Ladevorgänge
-          const { error: insertError } = await supabase
-            .from('charging_sessions')
-            .upsert(sessionsWithCosts, {
-              onConflict: 'wallbox_id,session_id',
-              ignoreDuplicates: false
-            })
-
-          if (insertError) throw insertError
-
-          totalSessions += sessionsWithCosts.length
-
-          // Aktualisiere last_sync
-          await supabase
-            .from('wallbox_connections')
-            .update({ last_sync: new Date().toISOString() })
-            .eq('id', wallbox.id)
         }
+
+        // Aktualisiere last_sync erst nach erfolgreicher Verarbeitung aller Batches
+        await supabase
+          .from('wallbox_connections')
+          .update({ last_sync: new Date().toISOString() })
+          .eq('id', wallbox.id)
 
       } catch (error) {
         console.error(`Fehler bei Wallbox ${wallbox.id}:`, error)
